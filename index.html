@@ -113,13 +113,18 @@
       </div>
     </div>
 
-    <!-- BPM + Tap -->
+    <!-- BPM + Tap + Swing -->
     <div class="control-block">
       <div class="block-label">BPM</div>
       <div class="bpm-row">
         <input type="range" id="bpm-slider" min="40" max="300" value="120" />
         <span id="bpm-value">120</span>
         <button id="btn-tap" class="btn btn-sm">TAP</button>
+      </div>
+      <div class="swing-row">
+        <span class="block-sublabel">SWING</span>
+        <input type="range" id="swing-slider" min="0" max="0.5" step="0.01" value="0" />
+        <span id="swing-value">0%</span>
       </div>
     </div>
 
@@ -134,13 +139,32 @@
       </div>
     </div>
 
-    <!-- Import -->
+    <!-- Sample + Kit -->
     <div class="control-block">
       <div class="block-label">Sample</div>
       <div class="transport-btns">
         <button id="btn-import" class="btn">↑ LOAD</button>
         <button id="btn-clear-pad" class="btn">✕ CLR</button>
         <button id="btn-slicer" class="btn btn-highlight">✂ SLICE</button>
+      </div>
+      <div class="kit-row">
+        <span class="block-sublabel">KIT</span>
+        <select id="kit-select">
+          <option value="">— Load Kit —</option>
+          <option value="808 Classic">808 Classic</option>
+          <option value="Lo-Fi">Lo-Fi</option>
+          <option value="Electronic">Electronic</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Project -->
+    <div class="control-block">
+      <div class="block-label">Project</div>
+      <div class="transport-btns">
+        <button id="btn-save" class="btn">↓ SAVE</button>
+        <button id="btn-load-proj" class="btn">↑ OPEN</button>
+        <button id="btn-export-wav" class="btn btn-highlight">⊙ WAV</button>
       </div>
     </div>
 
@@ -150,7 +174,13 @@
 
   <!-- Pad controls (pitch + volume + sends) -->
   <div class="pad-controls-section">
-    <div class="pad-controls-label" id="pad-controls-title">PAD 1 — controls</div>
+    <div class="pad-controls-header">
+      <div class="pad-controls-label" id="pad-controls-title">PAD 1 — controls</div>
+      <div class="pad-mute-solo">
+        <button id="pad-mute-btn" class="btn btn-sm pad-state-btn" title="Mute this pad">M</button>
+        <button id="pad-solo-btn" class="btn btn-sm pad-state-btn" title="Solo this pad">S</button>
+      </div>
+    </div>
     <div class="pad-controls-grid">
 
       <div class="pad-ctrl">
@@ -280,8 +310,9 @@
   </div>
 </div>
 
-<input type="file" id="file-input"        accept="audio/*" style="display:none" />
-<input type="file" id="slicer-file-input" accept="audio/*" style="display:none" />
+<input type="file" id="file-input"          accept="audio/*"              style="display:none" />
+<input type="file" id="slicer-file-input"  accept="audio/*"              style="display:none" />
+<input type="file" id="project-file-input" accept=".json,.koweb.json"    style="display:none" />
 <script type="module" src="js/app.js"></script>
 </body>
 </html>

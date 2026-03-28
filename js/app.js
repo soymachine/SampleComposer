@@ -1,8 +1,11 @@
-import { AudioEngine } from './audio-engine.js';
-import { Sequencer } from './sequencer.js';
-import { Recorder } from './recorder.js';
-import { SampleBank } from './sample-bank.js';
-import { Slicer } from './slicer.js';
+import { AudioEngine }    from './audio-engine.js';
+import { Sequencer }      from './sequencer.js';
+import { Recorder }       from './recorder.js';
+import { SampleBank }     from './sample-bank.js';
+import { Slicer }         from './slicer.js';
+import { ProjectManager } from './project.js';
+import { exportWAV }      from './export.js';
+import { loadKit, KIT_NAMES } from './kits.js';
 
 // ─── Core ─────────────────────────────────────────────────────────────────────
 const engine    = new AudioEngine();
@@ -10,6 +13,7 @@ const bank      = new SampleBank();
 const seq       = new Sequencer(engine);
 const recorder  = new Recorder(engine);
 const slicer    = new Slicer(engine, bank);
+const project   = new ProjectManager(engine, bank, seq);
 
 let activePad       = null;
 let recordTargetPad = null;
@@ -43,6 +47,7 @@ const stepLenBtns   = Array.from(document.querySelectorAll('.step-len-btn'));
 
 // ─── Sample bank ──────────────────────────────────────────────────────────────
 seq.setSampleResolver((pad) => bank.getBuffer(pad));
+seq.setBank(bank); // allow sequencer to check mute/solo
 
 bank.onChange = (padIndex) => {
   const padEl = pads[padIndex];
@@ -51,9 +56,17 @@ bank.onChange = (padIndex) => {
   padEl.querySelector('.pad-label').textContent = slot
     ? slot.name.slice(0, 6).toUpperCase()
     : padEl.dataset.key.toUpperCase();
+  // Mute / solo visual state
+  const muted    = bank.isMuted(padIndex);
+  const soloed   = bank.isSoloed(padIndex);
+  const silenced = bank.anySoloed() && !soloed;
+  padEl.classList.toggle('muted',    muted);
+  padEl.classList.toggle('soloed',   soloed);
+  padEl.classList.toggle('silenced', silenced && !muted);
   if (padIndex === activePad) {
     drawWaveform(padIndex);
     padNameEl.textContent = slot ? slot.name.toUpperCase() : 'NO SAMPLE';
+    updateMuteSoloBtns(padIndex);
   }
 };
 
@@ -65,7 +78,7 @@ pads.forEach((padEl, i) => {
     selectPad(i);
 
     const buf = bank.getBuffer(i);
-    if (buf) {
+    if (buf && bank.isAudible(i)) {
       const slot = bank.getSample(i);
       engine.playSample({ buffer: buf, pitch: slot.pitch, volume: slot.volume, sendLevels: slot.sendLevels, padIndex: i });
     }
@@ -121,6 +134,7 @@ function selectPad(i) {
   pads.forEach((p, idx) => p.classList.toggle('selected', idx === i));
   drawWaveform(i);
   updatePadControls(i);
+  updateMuteSoloBtns(i);
   const slot = bank.getSample(i);
   padNameEl.textContent    = slot ? slot.name.toUpperCase() : 'NO SAMPLE';
   padCtrlTitle.textContent = `PAD ${i + 1} — ${slot ? slot.name : 'empty'}`;
@@ -374,6 +388,132 @@ document.addEventListener('keydown', (e) => {
     btnStop.classList.toggle('active', !seq.isPlaying);
   }
   if (e.key === 't' || e.key === 'T') btnTap.click();
+});
+
+// ─── Swing ────────────────────────────────────────────────────────────────────
+const swingSlider = document.getElementById('swing-slider');
+const swingValue  = document.getElementById('swing-value');
+
+swingSlider.addEventListener('input', () => {
+  const val = parseFloat(swingSlider.value);
+  seq.setSwing(val);
+  swingValue.textContent = Math.round(val / 0.5 * 100) + '%';
+});
+
+// ─── Mute / Solo ──────────────────────────────────────────────────────────────
+const padMuteBtn = document.getElementById('pad-mute-btn');
+const padSoloBtn = document.getElementById('pad-solo-btn');
+
+function updateMuteSoloBtns(padIndex) {
+  padMuteBtn.classList.toggle('mute-active', bank.isMuted(padIndex));
+  padSoloBtn.classList.toggle('solo-active', bank.isSoloed(padIndex));
+}
+
+padMuteBtn.addEventListener('click', () => {
+  if (activePad === null) return;
+  bank.toggleMute(activePad);
+  updateMuteSoloBtns(activePad);
+  displayInfo.textContent = bank.isMuted(activePad) ? `PAD ${activePad + 1} MUTE` : `PAD ${activePad + 1} ON`;
+});
+
+padSoloBtn.addEventListener('click', () => {
+  if (activePad === null) return;
+  bank.toggleSolo(activePad);
+  updateMuteSoloBtns(activePad);
+  displayInfo.textContent = bank.isSoloed(activePad) ? `PAD ${activePad + 1} SOLO` : 'SOLO OFF';
+});
+
+// ─── Factory Kits ─────────────────────────────────────────────────────────────
+const kitSelect = document.getElementById('kit-select');
+
+kitSelect.addEventListener('change', async () => {
+  const kitName = kitSelect.value;
+  if (!kitName) return;
+  engine.init();
+  displayInfo.textContent = 'LOADING…';
+  kitSelect.disabled = true;
+  try {
+    await loadKit(kitName, bank);
+    displayInfo.textContent = kitName.toUpperCase().slice(0, 8);
+    if (activePad !== null) selectPad(activePad);
+  } catch (e) {
+    console.error(e);
+    displayInfo.textContent = 'KIT ERR';
+  }
+  kitSelect.disabled = false;
+  kitSelect.value = '';  // reset so same kit can be reloaded
+});
+
+// ─── Project save / load ──────────────────────────────────────────────────────
+const projectFileInput = document.getElementById('project-file-input');
+
+document.getElementById('btn-save').addEventListener('click', async () => {
+  const name = prompt('Project name:', 'my-beat') || 'my-beat';
+  displayInfo.textContent = 'SAVING…';
+  try {
+    await project.save(name);
+    displayInfo.textContent = 'SAVED!';
+  } catch (e) {
+    console.error(e);
+    displayInfo.textContent = 'SAVE ERR';
+  }
+});
+
+document.getElementById('btn-load-proj').addEventListener('click', () => {
+  projectFileInput.click();
+});
+
+projectFileInput.addEventListener('change', async () => {
+  const file = projectFileInput.files[0];
+  if (!file) return;
+  engine.init();
+  displayInfo.textContent = 'LOADING…';
+  try {
+    const loadedName = await project.load(file, {
+      onPadLoaded: (i) => {
+        displayInfo.textContent = `PAD ${i + 1}…`;
+      },
+    });
+    // Sync all UI
+    bpmSlider.value        = seq.bpm;
+    bpmValue.textContent   = seq.bpm;
+    displayBPM.textContent = String(seq.bpm).padStart(3, '0');
+    swingSlider.value      = seq.swing;
+    swingValue.textContent = Math.round(seq.swing / 0.5 * 100) + '%';
+    applyStepLength(seq.stepsPerPattern);
+    groupBtns.forEach((b, i) => b.classList.toggle('active', i === seq.activeGroup));
+    selectPad(activePad ?? 0);
+    updateStepGrid();
+    displayInfo.textContent = loadedName.toUpperCase().slice(0, 8);
+  } catch (e) {
+    console.error(e);
+    displayInfo.textContent = 'LOAD ERR';
+  }
+  projectFileInput.value = '';
+});
+
+// ─── WAV Export ───────────────────────────────────────────────────────────────
+document.getElementById('btn-export-wav').addEventListener('click', async () => {
+  engine.init();
+  const barsStr = prompt('Export how many bars?', '4');
+  const bars    = parseInt(barsStr, 10);
+  if (isNaN(bars) || bars < 1) return;
+  displayInfo.textContent = 'RENDER…';
+  document.getElementById('btn-export-wav').disabled = true;
+  try {
+    await exportWAV(engine, bank, seq, {
+      bars,
+      filename: `beat-${seq.bpm}bpm-${bars}bars.wav`,
+      onProgress: (p) => {
+        displayInfo.textContent = p >= 1 ? 'DONE!' : 'RENDER…';
+      },
+    });
+    displayInfo.textContent = 'EXPORTED';
+  } catch (e) {
+    console.error(e);
+    displayInfo.textContent = e.message.slice(0, 8).toUpperCase();
+  }
+  document.getElementById('btn-export-wav').disabled = false;
 });
 
 // ─── Slicer ───────────────────────────────────────────────────────────────────

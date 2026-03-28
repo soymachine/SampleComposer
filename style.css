@@ -446,6 +446,53 @@ body {
   gap: 7px;
 }
 
+/* Swing row */
+.swing-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.block-sublabel {
+  font-size: 7px;
+  color: var(--text-mid);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+#swing-value {
+  font-size: 10px;
+  color: var(--accent2);
+  min-width: 26px;
+}
+
+/* Kit row */
+.kit-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.kit-row select {
+  background: var(--btn-bg);
+  color: rgba(255,255,255,0.55);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 9px;
+  padding: 3px 5px;
+  cursor: pointer;
+  outline: none;
+  box-shadow: var(--inset);
+  flex: 1;
+}
+
+.kit-row select:hover { color: rgba(255,255,255,0.85); }
+.kit-row select option { background: #222; }
+
 input[type=range] {
   -webkit-appearance: none;
   appearance: none;
@@ -501,12 +548,19 @@ input[type=range]::-webkit-slider-thumb {
 /* ── Pad controls section ─────────────────────────────────────────────────── */
 .pad-controls-section { margin-bottom: 12px; }
 
+.pad-controls-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
 .pad-controls-label {
   font-size: 8px;
   color: var(--text-mid);
   letter-spacing: 2px;
   text-transform: uppercase;
-  margin-bottom: 8px;
+  margin-bottom: 0;
 }
 
 .pad-controls-grid {
@@ -564,6 +618,43 @@ input[type=range]#pad-pitch::-webkit-slider-thumb  { background: #a0a0ff; }
   opacity: 0.5;
   text-align: center;
   margin-top: 4px;
+}
+
+/* Mute / Solo buttons */
+.pad-mute-solo { display: flex; gap: 4px; }
+
+.pad-state-btn {
+  width: 26px;
+  height: 20px;
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  padding: 0;
+}
+
+.pad-state-btn.mute-active {
+  background: #8b1a1a;
+  color: #ff6060;
+  box-shadow: 0 3px 0 #4a0a0a, 0 0 6px rgba(255,60,60,0.3);
+}
+
+.pad-state-btn.solo-active {
+  background: #1a5a8b;
+  color: #60b0ff;
+  box-shadow: 0 3px 0 #0a2a4a, 0 0 6px rgba(60,140,255,0.3);
+}
+
+/* Pad visual states for mute/solo */
+.pad.muted {
+  opacity: 0.35;
+}
+
+.pad.silenced {
+  opacity: 0.2;   /* not-soloed when another pad is soloed */
+}
+
+.pad.soloed {
+  box-shadow: 0 0 0 2px #3090ff, 0 6px 0 rgba(0,0,0,0.5);
 }
 
 /* ── Highlight button variant ────────────────────────────────────────────── */
