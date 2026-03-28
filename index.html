@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KO·WEB — Sample Composer</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="device">
+
+  <!-- Brand -->
+  <div class="brand">teenage web&nbsp;&nbsp;<span>KO·WEB</span>&nbsp;&nbsp;sample composer</div>
+
+  <!-- Display row -->
+  <div class="display-row">
+    <div class="display">
+      <div class="disp-top">
+        <span class="disp-label">BPM</span>
+        <span class="disp-label">STATUS</span>
+      </div>
+      <div class="disp-top">
+        <span id="disp-bpm">120</span>
+        <span id="disp-info">STOP</span>
+      </div>
+    </div>
+    <div class="waveform-wrap">
+      <canvas id="waveform" width="200" height="72"></canvas>
+    </div>
+  </div>
+
+  <!-- Pad info strip -->
+  <div class="info-strip">
+    <span id="pad-name">PAD 1</span>
+    <span class="key-hint">keys: A S D F / G H J K / Z X C V</span>
+  </div>
+
+  <!-- Pads 4×3 -->
+  <div class="pads-section">
+    <div class="pad" data-index="0" data-key="a"><span class="pad-num">1</span><span class="pad-key">A</span><span class="pad-label">A</span></div>
+    <div class="pad" data-index="1" data-key="s"><span class="pad-num">2</span><span class="pad-key">S</span><span class="pad-label">S</span></div>
+    <div class="pad" data-index="2" data-key="d"><span class="pad-num">3</span><span class="pad-key">D</span><span class="pad-label">D</span></div>
+    <div class="pad" data-index="3" data-key="f"><span class="pad-num">4</span><span class="pad-key">F</span><span class="pad-label">F</span></div>
+
+    <div class="pad" data-index="4" data-key="g"><span class="pad-num">5</span><span class="pad-key">G</span><span class="pad-label">G</span></div>
+    <div class="pad" data-index="5" data-key="h"><span class="pad-num">6</span><span class="pad-key">H</span><span class="pad-label">H</span></div>
+    <div class="pad" data-index="6" data-key="j"><span class="pad-num">7</span><span class="pad-key">J</span><span class="pad-label">J</span></div>
+    <div class="pad" data-index="7" data-key="k"><span class="pad-num">8</span><span class="pad-key">K</span><span class="pad-label">K</span></div>
+
+    <div class="pad" data-index="8"  data-key="z"><span class="pad-num">9</span><span class="pad-key">Z</span><span class="pad-label">Z</span></div>
+    <div class="pad" data-index="9"  data-key="x"><span class="pad-num">10</span><span class="pad-key">X</span><span class="pad-label">X</span></div>
+    <div class="pad" data-index="10" data-key="c"><span class="pad-num">11</span><span class="pad-key">C</span><span class="pad-label">C</span></div>
+    <div class="pad" data-index="11" data-key="v"><span class="pad-num">12</span><span class="pad-key">V</span><span class="pad-label">V</span></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Step sequencer -->
+  <div class="seq-section">
+    <div class="seq-label">Step Sequencer — 16 steps</div>
+    <div class="step-grid">
+      <button class="step-btn" data-step="0"></button>
+      <button class="step-btn" data-step="1"></button>
+      <button class="step-btn" data-step="2"></button>
+      <button class="step-btn" data-step="3"></button>
+      <button class="step-btn" data-step="4"></button>
+      <button class="step-btn" data-step="5"></button>
+      <button class="step-btn" data-step="6"></button>
+      <button class="step-btn" data-step="7"></button>
+      <button class="step-btn" data-step="8"></button>
+      <button class="step-btn" data-step="9"></button>
+      <button class="step-btn" data-step="10"></button>
+      <button class="step-btn" data-step="11"></button>
+      <button class="step-btn" data-step="12"></button>
+      <button class="step-btn" data-step="13"></button>
+      <button class="step-btn" data-step="14"></button>
+      <button class="step-btn" data-step="15"></button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Controls row: transport + BPM + groups + effects -->
+  <div class="controls-row">
+
+    <!-- Transport -->
+    <div class="transport">
+      <div class="transport-label">Transport</div>
+      <div class="transport-btns">
+        <button id="btn-play"   class="btn">▶ PLAY</button>
+        <button id="btn-stop"   class="btn active">■ STOP</button>
+        <button id="btn-record" class="btn">● REC</button>
+      </div>
+    </div>
+
+    <!-- BPM -->
+    <div class="bpm-control">
+      <label for="bpm-slider">BPM</label>
+      <div class="bpm-slider-wrap">
+        <input type="range" id="bpm-slider" min="40" max="300" value="120" />
+        <span id="bpm-value">120</span>
+      </div>
+    </div>
+
+    <!-- Groups -->
+    <div class="group-section">
+      <div class="group-label">Group</div>
+      <div class="group-btns">
+        <button class="group-btn" data-group="0">A</button>
+        <button class="group-btn" data-group="1">B</button>
+        <button class="group-btn" data-group="2">C</button>
+        <button class="group-btn" data-group="3">D</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Effects sends -->
+  <div class="effects-section">
+    <div class="effects-label">FX Sends — selected pad</div>
+    <div class="sends">
+      <div class="send">
+        <span class="send-name">Reverb</span>
+        <input type="range" class="send-knob" data-send="reverb" min="0" max="1" step="0.01" value="0" />
+        <span class="knob-val">0</span>
+      </div>
+      <div class="send">
+        <span class="send-name">Delay</span>
+        <input type="range" class="send-knob" data-send="delay" min="0" max="1" step="0.01" value="0" />
+        <span class="knob-val">0</span>
+      </div>
+      <div class="send">
+        <span class="send-name">Filter</span>
+        <input type="range" class="send-knob" data-send="filter" min="0" max="1" step="0.01" value="0" />
+        <span class="knob-val">0</span>
+      </div>
+      <div class="send">
+        <span class="send-name">Drive</span>
+        <input type="range" class="send-knob" data-send="distortion" min="0" max="1" step="0.01" value="0" />
+        <span class="knob-val">0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom strip -->
+  <div class="bottom-strip">
+    <span class="bottom-label">drag audio files onto pads · hold REC + tap pad to mic record</span>
+    <button id="btn-import" class="btn">↑ IMPORT</button>
+    <input type="file" id="file-input" accept="audio/*" style="display:none" />
+  </div>
+
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
