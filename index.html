@@ -140,6 +140,7 @@
       <div class="transport-btns">
         <button id="btn-import" class="btn">↑ LOAD</button>
         <button id="btn-clear-pad" class="btn">✕ CLR</button>
+        <button id="btn-slicer" class="btn btn-highlight">✂ SLICE</button>
       </div>
     </div>
 
@@ -198,7 +199,89 @@
 
 </div>
 
-<input type="file" id="file-input" accept="audio/*" style="display:none" />
+<!-- ── Slicer overlay ──────────────────────────────────────────────────────── -->
+<div class="slicer-overlay hidden" id="slicer-overlay">
+  <div class="slicer-panel">
+
+    <div class="slicer-header">
+      <div class="slicer-title">
+        <span class="slicer-title-label">SAMPLE SLICER</span>
+        <span class="slicer-filename" id="slicer-filename">no file loaded</span>
+      </div>
+      <div class="slicer-header-actions">
+        <button class="btn btn-sm" id="slicer-load-btn">↑ LOAD MP3</button>
+        <button class="btn btn-sm" id="slicer-close">✕ CLOSE</button>
+      </div>
+    </div>
+
+    <!-- Waveform canvas -->
+    <div class="slicer-canvas-wrap"
+         id="slicer-drop-zone"
+         ondragover="event.preventDefault()"
+         ondragleave="this.classList.remove('drag-over')"
+         ondragenter="this.classList.add('drag-over')">
+      <canvas id="slicer-canvas" height="130"></canvas>
+    </div>
+
+    <!-- Time readout + zoom -->
+    <div class="slicer-info-row">
+      <div class="slicer-times">
+        <div class="slicer-time-block">
+          <span class="slicer-time-label">START</span>
+          <span class="slicer-time-val" id="slicer-start">0:00.00</span>
+        </div>
+        <div class="slicer-time-block">
+          <span class="slicer-time-label">END</span>
+          <span class="slicer-time-val" id="slicer-end">0:00.00</span>
+        </div>
+        <div class="slicer-time-block">
+          <span class="slicer-time-label">DUR</span>
+          <span class="slicer-time-val" id="slicer-dur">0:00.00</span>
+        </div>
+        <div class="slicer-time-block">
+          <span class="slicer-time-label">TOTAL</span>
+          <span class="slicer-time-val" id="slicer-total">—</span>
+        </div>
+      </div>
+      <div class="slicer-zoom-row">
+        <span class="slicer-time-label">ZOOM</span>
+        <input type="range" id="slicer-zoom" min="1" max="32" step="0.1" value="1" />
+        <button class="btn btn-sm" id="slicer-zoom-sel">⊡ FIT</button>
+        <button class="btn btn-sm" id="slicer-zoom-full">⊞ FULL</button>
+      </div>
+    </div>
+
+    <!-- Playback controls -->
+    <div class="slicer-transport">
+      <button class="btn" id="slicer-play">▶ PREVIEW</button>
+      <button class="btn" id="slicer-stop">■ STOP</button>
+      <span class="slicer-hint">drag handles to trim · drag region to move</span>
+    </div>
+
+    <!-- Pad assignment grid -->
+    <div class="slicer-pads-section">
+      <div class="slicer-pads-label">SEND SLICE TO PAD</div>
+      <div class="slicer-pad-grid">
+        <button class="slicer-pad-btn" data-pad="0">1</button>
+        <button class="slicer-pad-btn" data-pad="1">2</button>
+        <button class="slicer-pad-btn" data-pad="2">3</button>
+        <button class="slicer-pad-btn" data-pad="3">4</button>
+        <button class="slicer-pad-btn" data-pad="4">5</button>
+        <button class="slicer-pad-btn" data-pad="5">6</button>
+        <button class="slicer-pad-btn" data-pad="6">7</button>
+        <button class="slicer-pad-btn" data-pad="7">8</button>
+        <button class="slicer-pad-btn" data-pad="8">9</button>
+        <button class="slicer-pad-btn" data-pad="9">10</button>
+        <button class="slicer-pad-btn" data-pad="10">11</button>
+        <button class="slicer-pad-btn" data-pad="11">12</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<input type="file" id="file-input"        accept="audio/*" style="display:none" />
+<input type="file" id="slicer-file-input" accept="audio/*" style="display:none" />
 <script type="module" src="js/app.js"></script>
 </body>
 </html>

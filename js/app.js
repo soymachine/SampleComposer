@@ -2,12 +2,14 @@ import { AudioEngine } from './audio-engine.js';
 import { Sequencer } from './sequencer.js';
 import { Recorder } from './recorder.js';
 import { SampleBank } from './sample-bank.js';
+import { Slicer } from './slicer.js';
 
 // ─── Core ─────────────────────────────────────────────────────────────────────
 const engine    = new AudioEngine();
 const bank      = new SampleBank();
 const seq       = new Sequencer(engine);
 const recorder  = new Recorder(engine);
+const slicer    = new Slicer(engine, bank);
 
 let activePad       = null;
 let recordTargetPad = null;
@@ -372,6 +374,158 @@ document.addEventListener('keydown', (e) => {
     btnStop.classList.toggle('active', !seq.isPlaying);
   }
   if (e.key === 't' || e.key === 'T') btnTap.click();
+});
+
+// ─── Slicer ───────────────────────────────────────────────────────────────────
+const slicerOverlay   = document.getElementById('slicer-overlay');
+const slicerCanvas    = document.getElementById('slicer-canvas');
+const slicerFileInput = document.getElementById('slicer-file-input');
+const slicerDropZone  = document.getElementById('slicer-drop-zone');
+const slicerFilename  = document.getElementById('slicer-filename');
+const slicerPadBtns   = Array.from(document.querySelectorAll('.slicer-pad-btn'));
+let slicerRaf         = null;
+
+function openSlicer() {
+  engine.init();
+  slicerOverlay.classList.remove('hidden');
+  // Fit canvas to its container
+  slicerCanvas.width = slicerCanvas.offsetWidth || 720;
+  startSlicerLoop();
+  syncSlicerPadStates();
+}
+
+function closeSlicer() {
+  slicer.stopRegion();
+  slicerOverlay.classList.add('hidden');
+  cancelAnimationFrame(slicerRaf);
+}
+
+function startSlicerLoop() {
+  const loop = () => {
+    slicer.draw(slicerCanvas);
+    updateSlicerTimes();
+    slicerRaf = requestAnimationFrame(loop);
+  };
+  loop();
+}
+
+function updateSlicerTimes() {
+  document.getElementById('slicer-start').textContent = slicer.fmtStart();
+  document.getElementById('slicer-end').textContent   = slicer.fmtEnd();
+  document.getElementById('slicer-dur').textContent   = slicer.fmtDur();
+  const total = slicer.buffer ? slicer._fmt(slicer.buffer.duration) : '—';
+  document.getElementById('slicer-total').textContent = total;
+}
+
+function syncSlicerPadStates() {
+  slicerPadBtns.forEach((btn, i) => {
+    btn.classList.toggle('has-sample', bank.hasSample(i));
+  });
+}
+
+async function loadSlicerFile(file) {
+  if (!file || !file.type.startsWith('audio/')) return;
+  engine.init();
+  const buf = await recorder.loadFile(file);
+  slicer.loadBuffer(buf, file.name);
+  slicerFilename.textContent = file.name;
+  document.getElementById('slicer-zoom').value = 1;
+}
+
+// Open slicer button
+document.getElementById('btn-slicer').addEventListener('click', () => {
+  openSlicer();
+});
+
+document.getElementById('slicer-close').addEventListener('click', closeSlicer);
+
+// Close on overlay background click
+slicerOverlay.addEventListener('click', (e) => {
+  if (e.target === slicerOverlay) closeSlicer();
+});
+
+// Load button inside slicer
+document.getElementById('slicer-load-btn').addEventListener('click', () => slicerFileInput.click());
+slicerFileInput.addEventListener('change', async () => {
+  await loadSlicerFile(slicerFileInput.files[0]);
+  slicerFileInput.value = '';
+});
+
+// Drag-drop onto slicer canvas
+slicerDropZone.addEventListener('drop', async (e) => {
+  e.preventDefault();
+  slicerDropZone.classList.remove('drag-over');
+  await loadSlicerFile(e.dataTransfer.files[0]);
+});
+
+// Canvas mouse interaction
+slicerCanvas.addEventListener('mousedown',  (e) => slicer.onMouseDown(slicerCanvas, e));
+slicerCanvas.addEventListener('mousemove',  (e) => slicer.onMouseMove(slicerCanvas, e));
+slicerCanvas.addEventListener('mouseup',    ()  => slicer.onMouseUp());
+slicerCanvas.addEventListener('mouseleave', ()  => slicer.onMouseUp());
+
+// Touch support for slicer canvas
+slicerCanvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const r   = slicerCanvas.getBoundingClientRect();
+  const t   = e.touches[0];
+  slicer.onMouseDown(slicerCanvas, { offsetX: t.clientX - r.left, offsetY: t.clientY - r.top });
+}, { passive: false });
+slicerCanvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  const r = slicerCanvas.getBoundingClientRect();
+  const t = e.touches[0];
+  slicer.onMouseMove(slicerCanvas, { offsetX: t.clientX - r.left, offsetY: t.clientY - r.top });
+}, { passive: false });
+slicerCanvas.addEventListener('touchend', () => slicer.onMouseUp());
+
+// Slicer transport
+document.getElementById('slicer-play').addEventListener('click', () => {
+  engine.init();
+  slicer.playRegion();
+});
+document.getElementById('slicer-stop').addEventListener('click', () => slicer.stopRegion());
+
+// Zoom
+const slicerZoomSlider = document.getElementById('slicer-zoom');
+slicerZoomSlider.addEventListener('input', () => {
+  slicer.setZoom(parseFloat(slicerZoomSlider.value));
+});
+document.getElementById('slicer-zoom-sel').addEventListener('click', () => {
+  slicer.zoomToSelection();
+  slicerZoomSlider.value = 1; // approximate
+});
+document.getElementById('slicer-zoom-full').addEventListener('click', () => {
+  slicer.zoomFull();
+  slicerZoomSlider.value = 1;
+});
+
+// Pad assignment buttons
+slicerPadBtns.forEach((btn) => {
+  btn.addEventListener('click', () => {
+    if (!slicer.buffer) return;
+    const padIndex = parseInt(btn.dataset.pad);
+    slicer.sendToPad(padIndex);
+    syncSlicerPadStates();
+    // Flash confirmation
+    btn.classList.add('just-sent');
+    setTimeout(() => btn.classList.remove('just-sent'), 600);
+    displayInfo.textContent = `PAD ${padIndex + 1} SET`;
+  });
+});
+
+// Keep slicer pad states in sync when bank changes
+const _origBankOnChange = bank.onChange;
+bank.onChange = (padIndex) => {
+  if (_origBankOnChange) _origBankOnChange(padIndex);
+  syncSlicerPadStates();
+};
+
+// Resize slicer canvas on window resize
+window.addEventListener('resize', () => {
+  if (!slicerOverlay.classList.contains('hidden')) {
+    slicerCanvas.width = slicerCanvas.offsetWidth || 720;
+  }
 });
 
 // ─── Init ─────────────────────────────────────────────────────────────────────

@@ -576,6 +576,195 @@ input[type=range]::-webkit-slider-thumb {
   margin-top: 4px;
 }
 
+/* ── Highlight button variant ────────────────────────────────────────────── */
+.btn-highlight {
+  background: #2a3a28;
+  color: var(--display-fg);
+  box-shadow: 0 3px 0 #0a1a08, 0 0 0 1px rgba(57,255,20,0.2);
+}
+.btn-highlight:hover { background: #354830; }
+
+/* ── Slicer overlay ───────────────────────────────────────────────────────── */
+.slicer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+  backdrop-filter: blur(4px);
+}
+
+.slicer-overlay.hidden { display: none; }
+
+.slicer-panel {
+  background: linear-gradient(160deg, #1e1e16 0%, #161610 100%);
+  border: 1px solid rgba(57,255,20,0.12);
+  border-radius: 14px;
+  padding: 18px;
+  width: 100%;
+  max-width: 760px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.04) inset;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Header */
+.slicer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.slicer-title { display: flex; flex-direction: column; gap: 3px; }
+
+.slicer-title-label {
+  font-size: 9px;
+  letter-spacing: 4px;
+  color: var(--display-fg);
+  text-shadow: 0 0 8px rgba(57,255,20,0.4);
+  text-transform: uppercase;
+}
+
+.slicer-filename {
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 1px;
+  max-width: 380px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.slicer-header-actions { display: flex; gap: 6px; }
+
+/* Canvas */
+.slicer-canvas-wrap {
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #0f200f;
+  position: relative;
+  cursor: crosshair;
+}
+
+.slicer-canvas-wrap.drag-over {
+  border-color: var(--display-fg);
+  box-shadow: 0 0 0 2px rgba(57,255,20,0.3);
+}
+
+#slicer-canvas {
+  display: block;
+  width: 100%;
+}
+
+/* Info row */
+.slicer-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.slicer-times {
+  display: flex;
+  gap: 16px;
+}
+
+.slicer-time-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.slicer-time-label {
+  font-size: 7px;
+  letter-spacing: 2px;
+  color: rgba(57,255,20,0.4);
+  text-transform: uppercase;
+}
+
+.slicer-time-val {
+  font-size: 13px;
+  color: var(--display-fg);
+  letter-spacing: 2px;
+  text-shadow: 0 0 8px rgba(57,255,20,0.5);
+}
+
+.slicer-zoom-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.slicer-zoom-row input[type=range] { width: 100px; }
+
+/* Transport */
+.slicer-transport {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.slicer-hint {
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  color: rgba(255,255,255,0.2);
+  text-transform: uppercase;
+  margin-left: 4px;
+}
+
+/* Pad assignment */
+.slicer-pads-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.slicer-pads-label {
+  font-size: 8px;
+  letter-spacing: 3px;
+  color: rgba(255,255,255,0.3);
+  text-transform: uppercase;
+}
+
+.slicer-pad-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 5px;
+}
+
+.slicer-pad-btn {
+  background: #2a2820;
+  border: none;
+  border-radius: 5px;
+  color: rgba(255,255,255,0.45);
+  font-family: inherit;
+  font-size: 10px;
+  padding: 9px 0;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.5);
+  transition: all 0.06s;
+  text-align: center;
+}
+
+.slicer-pad-btn:hover  { background: #3a3428; color: var(--accent2); }
+.slicer-pad-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.4); }
+
+.slicer-pad-btn.has-sample {
+  background: #243018;
+  color: var(--accent2);
+  box-shadow: 0 3px 0 #0a1808;
+}
+
+.slicer-pad-btn.just-sent {
+  background: var(--accent);
+  color: #fff;
+}
+
 /* ── Scrollbar ────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-thumb { background: var(--btn-bg); border-radius: 3px; }
