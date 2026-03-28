@@ -388,9 +388,11 @@ let slicerRaf         = null;
 function openSlicer() {
   engine.init();
   slicerOverlay.classList.remove('hidden');
-  // Fit canvas to its container
-  slicerCanvas.width = slicerCanvas.offsetWidth || 720;
-  startSlicerLoop();
+  // Wait one frame for the browser to reflow before reading offsetWidth
+  requestAnimationFrame(() => {
+    slicerCanvas.width = slicerCanvas.offsetWidth || 720;
+    startSlicerLoop();
+  });
   syncSlicerPadStates();
 }
 

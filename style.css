@@ -1,7 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
 /* ── Reset & base ─────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
 
 :root {
   --body-bg:       #d4ccbc;
@@ -91,13 +91,15 @@ body {
   box-shadow: var(--inset), 0 0 0 1px rgba(57,255,20,0.06);
   flex: 1;
   min-height: 80px;
+  display: flex;
+  align-items: stretch;
 }
 
 .disp-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 100%;
+  flex: 1;
 }
 
 .disp-label {
@@ -527,29 +529,17 @@ input[type=range]::-webkit-slider-thumb {
   text-transform: uppercase;
 }
 
-.ctrl-slider {
-  -webkit-appearance: none;
-  appearance: none;
+/* Higher specificity than input[type=range] (0,1,1) so these win */
+input[type=range].ctrl-slider {
   width: 100%;
-  height: 4px;
-  background: var(--btn-bg);
-  border-radius: 2px;
-  outline: none;
-  box-shadow: var(--inset);
 }
 
-.ctrl-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
+input[type=range].ctrl-slider::-webkit-slider-thumb {
   background: var(--accent2);
-  cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }
 
-#pad-volume::-webkit-slider-thumb { background: var(--display-fg); }
-#pad-pitch::-webkit-slider-thumb  { background: #a0a0ff; }
+input[type=range]#pad-volume::-webkit-slider-thumb { background: var(--display-fg); }
+input[type=range]#pad-pitch::-webkit-slider-thumb  { background: #a0a0ff; }
 
 .ctrl-val {
   font-size: 8px;
