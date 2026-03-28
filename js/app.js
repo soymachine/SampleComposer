@@ -3,46 +3,56 @@ import { Sequencer } from './sequencer.js';
 import { Recorder } from './recorder.js';
 import { SampleBank } from './sample-bank.js';
 
-// ─── State ────────────────────────────────────────────────────────────────────
-const engine = new AudioEngine();
-const bank = new SampleBank();
-const seq = new Sequencer(engine);
-const recorder = new Recorder(engine);
+// ─── Core ─────────────────────────────────────────────────────────────────────
+const engine    = new AudioEngine();
+const bank      = new SampleBank();
+const seq       = new Sequencer(engine);
+const recorder  = new Recorder(engine);
 
-let activePad = null;      // currently selected pad (0–11)
-let recordTargetPad = null; // pad we're about to record into
-let isRecordArmed = false;
+let activePad       = null;
+let recordTargetPad = null;
+let isRecordArmed   = false;
+let stepLength      = 8;
 
-// ─── DOM refs ─────────────────────────────────────────────────────────────────
-const pads = Array.from(document.querySelectorAll('.pad'));
-const steps = Array.from(document.querySelectorAll('.step-btn'));
-const displayBPM = document.getElementById('disp-bpm');
-const displayInfo = document.getElementById('disp-info');
-const btnPlay = document.getElementById('btn-play');
-const btnStop = document.getElementById('btn-stop');
-const btnRecord = document.getElementById('btn-record');
-const bpmSlider = document.getElementById('bpm-slider');
-const bpmValue = document.getElementById('bpm-value');
-const groupBtns = Array.from(document.querySelectorAll('.group-btn'));
-const waveCanvas = document.getElementById('waveform');
-const fileInput = document.getElementById('file-input');
-const padName = document.getElementById('pad-name');
-const sendKnobs = document.querySelectorAll('.send-knob');
+// ─── DOM ──────────────────────────────────────────────────────────────────────
+const pads          = Array.from(document.querySelectorAll('.pad'));
+const steps         = Array.from(document.querySelectorAll('.step-btn'));
+const displayBPM    = document.getElementById('disp-bpm');
+const displayInfo   = document.getElementById('disp-info');
+const displayPad    = document.getElementById('disp-pad');
+const beatDots      = Array.from(document.querySelectorAll('.beat-dot'));
+const btnPlay       = document.getElementById('btn-play');
+const btnStop       = document.getElementById('btn-stop');
+const btnRecord     = document.getElementById('btn-record');
+const btnTap        = document.getElementById('btn-tap');
+const bpmSlider     = document.getElementById('bpm-slider');
+const bpmValue      = document.getElementById('bpm-value');
+const groupBtns     = Array.from(document.querySelectorAll('.group-btn'));
+const waveCanvas    = document.getElementById('waveform');
+const fileInput     = document.getElementById('file-input');
+const padNameEl     = document.getElementById('pad-name');
+const padCtrlTitle  = document.getElementById('pad-controls-title');
+const sendKnobs     = document.querySelectorAll('.send-knob');
+const padVolume     = document.getElementById('pad-volume');
+const padPitch      = document.getElementById('pad-pitch');
+const padVolumeVal  = document.getElementById('pad-volume-val');
+const padPitchVal   = document.getElementById('pad-pitch-val');
+const stepLenBtns   = Array.from(document.querySelectorAll('.step-len-btn'));
 
-// ─── Sample bank wiring ───────────────────────────────────────────────────────
+// ─── Sample bank ──────────────────────────────────────────────────────────────
 seq.setSampleResolver((pad) => bank.getBuffer(pad));
 
 bank.onChange = (padIndex) => {
   const padEl = pads[padIndex];
-  const hasSample = bank.hasSample(padIndex);
-  padEl.classList.toggle('has-sample', hasSample);
-  const slot = bank.getSample(padIndex);
-  if (slot) {
-    padEl.querySelector('.pad-label').textContent = slot.name.slice(0, 6).toUpperCase();
-  } else {
-    padEl.querySelector('.pad-label').textContent = padEl.dataset.key.toUpperCase();
+  const slot  = bank.getSample(padIndex);
+  padEl.classList.toggle('has-sample', !!slot);
+  padEl.querySelector('.pad-label').textContent = slot
+    ? slot.name.slice(0, 6).toUpperCase()
+    : padEl.dataset.key.toUpperCase();
+  if (padIndex === activePad) {
+    drawWaveform(padIndex);
+    padNameEl.textContent = slot ? slot.name.toUpperCase() : 'NO SAMPLE';
   }
-  if (padIndex === activePad) drawWaveform(padIndex);
 };
 
 // ─── Pad interaction ──────────────────────────────────────────────────────────
@@ -55,16 +65,16 @@ pads.forEach((padEl, i) => {
     const buf = bank.getBuffer(i);
     if (buf) {
       const slot = bank.getSample(i);
-      engine.playSample({
-        buffer: buf,
-        pitch: slot.pitch,
-        volume: slot.volume,
-        sendLevels: slot.sendLevels,
-      });
+      engine.playSample({ buffer: buf, pitch: slot.pitch, volume: slot.volume, sendLevels: slot.sendLevels });
     }
 
+    // Press + glow
     padEl.classList.add('active');
-    setTimeout(() => padEl.classList.remove('active'), 100);
+    padEl.classList.add('flash');
+    setTimeout(() => {
+      padEl.classList.remove('active');
+      padEl.classList.remove('flash');
+    }, 120);
 
     if (seq.isRecording) seq.recordHit(i);
   };
@@ -72,54 +82,101 @@ pads.forEach((padEl, i) => {
   padEl.addEventListener('mousedown', trigger);
   padEl.addEventListener('touchstart', trigger, { passive: false });
 
-  // Drag-drop sample files onto pads
-  padEl.addEventListener('dragover', (e) => { e.preventDefault(); padEl.classList.add('drag-over'); });
-  padEl.addEventListener('dragleave', () => padEl.classList.remove('drag-over'));
+  // Drag-drop
+  padEl.addEventListener('dragover',  (e) => { e.preventDefault(); padEl.classList.add('drag-over'); });
+  padEl.addEventListener('dragleave', ()  => padEl.classList.remove('drag-over'));
   padEl.addEventListener('drop', async (e) => {
     e.preventDefault();
     padEl.classList.remove('drag-over');
     const file = e.dataTransfer.files[0];
     if (file && file.type.startsWith('audio/')) {
+      engine.init();
       const buf = await recorder.loadFile(file);
       bank.setSample(i, buf, file.name.replace(/\.[^.]+$/, ''));
     }
   });
+
+  // Long-press while REC armed → mic record
+  let holdTimer = null;
+  padEl.addEventListener('mousedown', () => {
+    if (!isRecordArmed) return;
+    holdTimer = setTimeout(async () => {
+      recordTargetPad = i;
+      displayInfo.textContent = `REC ${i + 1}`;
+      await recorder.startRecording();
+    }, 400);
+  });
+  const cancel = () => {
+    clearTimeout(holdTimer);
+    if (recorder.isRecording) recorder.stopRecording();
+  };
+  padEl.addEventListener('mouseup',    cancel);
+  padEl.addEventListener('mouseleave', cancel);
 });
 
 function selectPad(i) {
   activePad = i;
   pads.forEach((p, idx) => p.classList.toggle('selected', idx === i));
   drawWaveform(i);
-  updateSendKnobs(i);
+  updatePadControls(i);
   const slot = bank.getSample(i);
-  padName.textContent = slot ? slot.name : `PAD ${i + 1}`;
-  updateStepGridForActivePad();
+  padNameEl.textContent    = slot ? slot.name.toUpperCase() : 'NO SAMPLE';
+  padCtrlTitle.textContent = `PAD ${i + 1} — ${slot ? slot.name : 'empty'}`;
+  displayPad.textContent   = String(i + 1).padStart(2, '0');
+  updateStepGrid();
 }
 
-// ─── Step sequencer grid ──────────────────────────────────────────────────────
+// ─── Step grid ────────────────────────────────────────────────────────────────
+function applyStepLength(len) {
+  stepLength = len;
+  seq.stepsPerPattern = len;
+  steps.forEach((btn, i) => {
+    btn.classList.toggle('inactive', i >= len);
+  });
+  stepLenBtns.forEach(b => b.classList.toggle('active', parseInt(b.dataset.len) === len));
+}
+
+stepLenBtns.forEach(btn => {
+  btn.addEventListener('click', () => applyStepLength(parseInt(btn.dataset.len)));
+});
+
 steps.forEach((btn, stepIdx) => {
   btn.addEventListener('click', () => {
-    if (activePad === null) return;
+    if (activePad === null || stepIdx >= stepLength) return;
     const active = seq.toggleStep(seq.activeGroup, activePad, stepIdx);
     btn.classList.toggle('on', active);
   });
 });
 
-function updateStepGridForActivePad() {
+function updateStepGrid() {
   if (activePad === null) return;
   steps.forEach((btn, stepIdx) => {
     const s = seq.groups[seq.activeGroup][activePad][stepIdx];
     btn.classList.toggle('on', s.active);
+    btn.classList.toggle('inactive', stepIdx >= stepLength);
   });
 }
 
+document.getElementById('btn-clear').addEventListener('click', () => {
+  seq.clearPattern(seq.activeGroup);
+  updateStepGrid();
+  displayInfo.textContent = 'CLR';
+});
+
+// ─── Sequencer callbacks ──────────────────────────────────────────────────────
 seq.onStep = (step) => {
   steps.forEach((btn, i) => btn.classList.toggle('playing', i === step));
+
+  // Beat dot: step 0,4,8,12 → dots 0–3
+  const beat = Math.floor(step / 4) % 4;
+  beatDots.forEach((d, i) => d.classList.toggle('active', i === beat));
+
   displayInfo.textContent = `STEP ${String(step + 1).padStart(2, '0')}`;
 };
 
 seq.onStop = () => {
   steps.forEach(btn => btn.classList.remove('playing'));
+  beatDots.forEach(d => d.classList.remove('active'));
   displayInfo.textContent = 'STOP';
 };
 
@@ -144,58 +201,62 @@ btnRecord.addEventListener('click', () => {
   btnRecord.classList.toggle('armed', isRecordArmed);
   if (isRecordArmed) {
     displayInfo.textContent = 'REC ARM';
-    // Arm mic recording — next pad tap records a new sample
     recorder.onRecordingComplete = (buf) => {
       if (recordTargetPad !== null) {
         bank.setSample(recordTargetPad, buf, `MIC ${recordTargetPad + 1}`);
         recordTargetPad = null;
       }
       displayInfo.textContent = 'REC OK';
+      isRecordArmed = false;
+      btnRecord.classList.remove('armed');
     };
   } else {
     recorder.stopRecording();
-    displayInfo.textContent = 'STOP';
+    displayInfo.textContent = seq.isPlaying ? 'PLAY' : 'STOP';
   }
 });
 
-// Long-press pad while record armed → mic record into that pad
-pads.forEach((padEl, i) => {
-  let holdTimer = null;
-  padEl.addEventListener('mousedown', () => {
-    if (!isRecordArmed) return;
-    holdTimer = setTimeout(async () => {
-      recordTargetPad = i;
-      displayInfo.textContent = `REC PAD ${i + 1}`;
-      await recorder.startRecording();
-    }, 400);
-  });
-  const cancel = () => {
-    clearTimeout(holdTimer);
-    if (recorder.isRecording) recorder.stopRecording();
-  };
-  padEl.addEventListener('mouseup', cancel);
-  padEl.addEventListener('mouseleave', cancel);
+// ─── Tap tempo ────────────────────────────────────────────────────────────────
+const tapTimes = [];
+btnTap.addEventListener('click', () => {
+  const now = performance.now();
+  tapTimes.push(now);
+  if (tapTimes.length > 8) tapTimes.shift();
+  if (tapTimes.length >= 2) {
+    const intervals = [];
+    for (let i = 1; i < tapTimes.length; i++) intervals.push(tapTimes[i] - tapTimes[i - 1]);
+    const avg = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+    const bpm = Math.round(60000 / avg);
+    seq.setBPM(bpm);
+    bpmSlider.value      = bpm;
+    bpmValue.textContent = bpm;
+    displayBPM.textContent = String(bpm).padStart(3, '0');
+  }
+  // Flash BPM display
+  displayBPM.style.opacity = '0.4';
+  setTimeout(() => { displayBPM.style.opacity = '1'; }, 80);
 });
 
-// ─── BPM control ─────────────────────────────────────────────────────────────
+// ─── BPM slider ───────────────────────────────────────────────────────────────
 bpmSlider.addEventListener('input', () => {
   const bpm = parseInt(bpmSlider.value, 10);
   seq.setBPM(bpm);
-  bpmValue.textContent = bpm;
+  bpmValue.textContent   = bpm;
   displayBPM.textContent = String(bpm).padStart(3, '0');
+  tapTimes.length = 0; // reset tap on manual change
 });
 
 // ─── Group selector ───────────────────────────────────────────────────────────
 groupBtns.forEach((btn, g) => {
   btn.addEventListener('click', () => {
     seq.setGroup(g);
-    groupBtns.forEach((b, idx) => b.classList.toggle('active', idx === g));
-    updateStepGridForActivePad();
-    displayInfo.textContent = `GRP ${['A','B','C','D'][g]}`;
+    groupBtns.forEach((b, i) => b.classList.toggle('active', i === g));
+    updateStepGrid();
+    displayInfo.textContent = `GRP ${'ABCD'[g]}`;
   });
 });
 
-// ─── File import ──────────────────────────────────────────────────────────────
+// ─── File import / clear pad ──────────────────────────────────────────────────
 document.getElementById('btn-import').addEventListener('click', () => {
   if (activePad === null) { displayInfo.textContent = 'SEL PAD'; return; }
   fileInput.click();
@@ -210,71 +271,92 @@ fileInput.addEventListener('change', async () => {
   fileInput.value = '';
 });
 
-// ─── Send effect knobs ────────────────────────────────────────────────────────
+document.getElementById('btn-clear-pad').addEventListener('click', () => {
+  if (activePad === null) return;
+  bank.clear(activePad);
+  drawWaveform(activePad);
+  displayInfo.textContent = 'CLR PAD';
+});
+
+// ─── Pad controls (volume, pitch, sends) ─────────────────────────────────────
+padVolume.addEventListener('input', () => {
+  if (activePad === null) return;
+  const val = parseFloat(padVolume.value);
+  bank.getSample(activePad) && (bank.getSample(activePad).volume = val);
+  padVolumeVal.textContent = Math.round(val * 100);
+});
+
+padPitch.addEventListener('input', () => {
+  if (activePad === null) return;
+  const val = parseFloat(padPitch.value);
+  bank.getSample(activePad) && (bank.getSample(activePad).pitch = val);
+  padPitchVal.textContent = val.toFixed(2) + '×';
+});
+
 sendKnobs.forEach((knob) => {
   knob.addEventListener('input', () => {
     if (activePad === null) return;
     const send = knob.dataset.send;
-    const val = parseFloat(knob.value);
+    const val  = parseFloat(knob.value);
     bank.setSendLevel(activePad, send, val);
-    knob.parentElement.querySelector('.knob-val').textContent = Math.round(val * 100);
+    knob.closest('.pad-ctrl').querySelector('.ctrl-val').textContent = Math.round(val * 100);
   });
 });
 
-function updateSendKnobs(padIndex) {
+function updatePadControls(padIndex) {
   const slot = bank.getSample(padIndex);
+  padVolume.value         = slot ? slot.volume : 1;
+  padPitch.value          = slot ? slot.pitch  : 1;
+  padVolumeVal.textContent = Math.round((slot ? slot.volume : 1) * 100);
+  padPitchVal.textContent  = (slot ? slot.pitch : 1).toFixed(2) + '×';
   sendKnobs.forEach((knob) => {
     const send = knob.dataset.send;
-    const val = slot ? (slot.sendLevels[send] || 0) : 0;
+    const val  = slot ? (slot.sendLevels[send] || 0) : 0;
     knob.value = val;
-    knob.parentElement.querySelector('.knob-val').textContent = Math.round(val * 100);
+    knob.closest('.pad-ctrl').querySelector('.ctrl-val').textContent = Math.round(val * 100);
   });
 }
 
-// ─── Waveform canvas ──────────────────────────────────────────────────────────
+// ─── Waveform ─────────────────────────────────────────────────────────────────
 function drawWaveform(padIndex) {
   const ctx = waveCanvas.getContext('2d');
-  const w = waveCanvas.width;
-  const h = waveCanvas.height;
+  const w   = waveCanvas.width;
+  const h   = waveCanvas.height;
   ctx.clearRect(0, 0, w, h);
 
   const peaks = bank.getWaveformData(padIndex);
   if (!peaks) {
-    ctx.strokeStyle = '#3a3a2a';
+    ctx.strokeStyle = '#1a3a1a';
     ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, h / 2);
-    ctx.lineTo(w, h / 2);
-    ctx.stroke();
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2); ctx.stroke();
+    ctx.setLineDash([]);
     return;
   }
 
-  ctx.fillStyle = '#0d1f0d';
+  ctx.fillStyle = '#0a160a';
   ctx.fillRect(0, 0, w, h);
 
-  // Waveform bars
   const barW = w / peaks.length;
-  ctx.fillStyle = '#39ff14';
   for (let i = 0; i < peaks.length; i++) {
-    const barH = peaks[i] * h * 0.9;
+    const amp  = peaks[i];
+    const barH = amp * h * 0.88;
+    // Gradient colour: quiet=dim, loud=bright
+    ctx.fillStyle = amp > 0.6
+      ? '#39ff14'
+      : amp > 0.3
+        ? '#28cc0e'
+        : '#1a8a0a';
     ctx.fillRect(i * barW, (h - barH) / 2, Math.max(1, barW - 1), barH);
   }
 
-  // Center line
-  ctx.strokeStyle = 'rgba(57,255,20,0.2)';
+  ctx.strokeStyle = 'rgba(57,255,20,0.12)';
   ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(0, h / 2);
-  ctx.lineTo(w, h / 2);
-  ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2); ctx.stroke();
 }
 
-// ─── Keyboard shortcuts ───────────────────────────────────────────────────────
-const keyMap = {
-  'a': 0, 's': 1, 'd': 2, 'f': 3,
-  'g': 4, 'h': 5, 'j': 6, 'k': 7,
-  'z': 8, 'x': 9, 'c': 10, 'v': 11,
-};
+// ─── Keyboard ─────────────────────────────────────────────────────────────────
+const keyMap = { a:0, s:1, d:2, f:3, g:4, h:5, j:6, k:7, z:8, x:9, c:10, v:11 };
 
 document.addEventListener('keydown', (e) => {
   if (e.repeat || e.target.tagName === 'INPUT') return;
@@ -289,12 +371,13 @@ document.addEventListener('keydown', (e) => {
     btnPlay.classList.toggle('active', seq.isPlaying);
     btnStop.classList.toggle('active', !seq.isPlaying);
   }
+  if (e.key === 't' || e.key === 'T') btnTap.click();
 });
 
-// ─── Init display ─────────────────────────────────────────────────────────────
+// ─── Init ─────────────────────────────────────────────────────────────────────
 displayBPM.textContent = String(seq.bpm).padStart(3, '0');
-displayInfo.textContent = 'STOP';
-bpmValue.textContent = seq.bpm;
-bpmSlider.value = seq.bpm;
-selectPad(0);
+bpmValue.textContent   = seq.bpm;
+bpmSlider.value        = seq.bpm;
 groupBtns[0].classList.add('active');
+applyStepLength(8);
+selectPad(0);

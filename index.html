@@ -17,37 +17,41 @@
   <div class="display-row">
     <div class="display">
       <div class="disp-top">
-        <span class="disp-label">BPM</span>
-        <span class="disp-label">STATUS</span>
-      </div>
-      <div class="disp-top">
-        <span id="disp-bpm">120</span>
-        <span id="disp-info">STOP</span>
+        <div>
+          <div class="disp-label">BPM</div>
+          <div id="disp-bpm">120</div>
+        </div>
+        <div class="disp-center">
+          <div class="beat-dots">
+            <span class="beat-dot" data-beat="0"></span>
+            <span class="beat-dot" data-beat="1"></span>
+            <span class="beat-dot" data-beat="2"></span>
+            <span class="beat-dot" data-beat="3"></span>
+          </div>
+          <div id="disp-info">STOP</div>
+        </div>
+        <div class="disp-right">
+          <div class="disp-label">PAD</div>
+          <div id="disp-pad">—</div>
+        </div>
       </div>
     </div>
     <div class="waveform-wrap">
-      <canvas id="waveform" width="200" height="72"></canvas>
+      <canvas id="waveform" width="240" height="80"></canvas>
+      <div class="waveform-label" id="pad-name">NO SAMPLE</div>
     </div>
-  </div>
-
-  <!-- Pad info strip -->
-  <div class="info-strip">
-    <span id="pad-name">PAD 1</span>
-    <span class="key-hint">keys: A S D F / G H J K / Z X C V</span>
   </div>
 
   <!-- Pads 4×3 -->
   <div class="pads-section">
-    <div class="pad" data-index="0" data-key="a"><span class="pad-num">1</span><span class="pad-key">A</span><span class="pad-label">A</span></div>
-    <div class="pad" data-index="1" data-key="s"><span class="pad-num">2</span><span class="pad-key">S</span><span class="pad-label">S</span></div>
-    <div class="pad" data-index="2" data-key="d"><span class="pad-num">3</span><span class="pad-key">D</span><span class="pad-label">D</span></div>
-    <div class="pad" data-index="3" data-key="f"><span class="pad-num">4</span><span class="pad-key">F</span><span class="pad-label">F</span></div>
-
-    <div class="pad" data-index="4" data-key="g"><span class="pad-num">5</span><span class="pad-key">G</span><span class="pad-label">G</span></div>
-    <div class="pad" data-index="5" data-key="h"><span class="pad-num">6</span><span class="pad-key">H</span><span class="pad-label">H</span></div>
-    <div class="pad" data-index="6" data-key="j"><span class="pad-num">7</span><span class="pad-key">J</span><span class="pad-label">J</span></div>
-    <div class="pad" data-index="7" data-key="k"><span class="pad-num">8</span><span class="pad-key">K</span><span class="pad-label">K</span></div>
-
+    <div class="pad" data-index="0"  data-key="a"><span class="pad-num">1</span><span class="pad-key">A</span><span class="pad-label">A</span></div>
+    <div class="pad" data-index="1"  data-key="s"><span class="pad-num">2</span><span class="pad-key">S</span><span class="pad-label">S</span></div>
+    <div class="pad" data-index="2"  data-key="d"><span class="pad-num">3</span><span class="pad-key">D</span><span class="pad-label">D</span></div>
+    <div class="pad" data-index="3"  data-key="f"><span class="pad-num">4</span><span class="pad-key">F</span><span class="pad-label">F</span></div>
+    <div class="pad" data-index="4"  data-key="g"><span class="pad-num">5</span><span class="pad-key">G</span><span class="pad-label">G</span></div>
+    <div class="pad" data-index="5"  data-key="h"><span class="pad-num">6</span><span class="pad-key">H</span><span class="pad-label">H</span></div>
+    <div class="pad" data-index="6"  data-key="j"><span class="pad-num">7</span><span class="pad-key">J</span><span class="pad-label">J</span></div>
+    <div class="pad" data-index="7"  data-key="k"><span class="pad-num">8</span><span class="pad-key">K</span><span class="pad-label">K</span></div>
     <div class="pad" data-index="8"  data-key="z"><span class="pad-num">9</span><span class="pad-key">Z</span><span class="pad-label">Z</span></div>
     <div class="pad" data-index="9"  data-key="x"><span class="pad-num">10</span><span class="pad-key">X</span><span class="pad-label">X</span></div>
     <div class="pad" data-index="10" data-key="c"><span class="pad-num">11</span><span class="pad-key">C</span><span class="pad-label">C</span></div>
@@ -58,7 +62,22 @@
 
   <!-- Step sequencer -->
   <div class="seq-section">
-    <div class="seq-label">Step Sequencer — 16 steps</div>
+    <div class="seq-header">
+      <div class="seq-label">Step Sequencer</div>
+      <div class="seq-controls">
+        <div class="step-len-btns">
+          <button class="step-len-btn active" data-len="8">8</button>
+          <button class="step-len-btn" data-len="16">16</button>
+        </div>
+        <button id="btn-clear" class="btn btn-sm">CLR</button>
+      </div>
+    </div>
+    <div class="beat-numbers">
+      <span>1</span><span></span><span></span><span></span>
+      <span>2</span><span></span><span></span><span></span>
+      <span>3</span><span></span><span></span><span></span>
+      <span>4</span><span></span><span></span><span></span>
+    </div>
     <div class="step-grid">
       <button class="step-btn" data-step="0"></button>
       <button class="step-btn" data-step="1"></button>
@@ -81,12 +100,12 @@
 
   <div class="divider"></div>
 
-  <!-- Controls row: transport + BPM + groups + effects -->
-  <div class="controls-row">
+  <!-- Bottom controls -->
+  <div class="bottom-controls">
 
     <!-- Transport -->
-    <div class="transport">
-      <div class="transport-label">Transport</div>
+    <div class="control-block">
+      <div class="block-label">Transport</div>
       <div class="transport-btns">
         <button id="btn-play"   class="btn">▶ PLAY</button>
         <button id="btn-stop"   class="btn active">■ STOP</button>
@@ -94,18 +113,19 @@
       </div>
     </div>
 
-    <!-- BPM -->
-    <div class="bpm-control">
-      <label for="bpm-slider">BPM</label>
-      <div class="bpm-slider-wrap">
+    <!-- BPM + Tap -->
+    <div class="control-block">
+      <div class="block-label">BPM</div>
+      <div class="bpm-row">
         <input type="range" id="bpm-slider" min="40" max="300" value="120" />
         <span id="bpm-value">120</span>
+        <button id="btn-tap" class="btn btn-sm">TAP</button>
       </div>
     </div>
 
     <!-- Groups -->
-    <div class="group-section">
-      <div class="group-label">Group</div>
+    <div class="control-block">
+      <div class="block-label">Group</div>
       <div class="group-btns">
         <button class="group-btn" data-group="0">A</button>
         <button class="group-btn" data-group="1">B</button>
@@ -114,44 +134,71 @@
       </div>
     </div>
 
+    <!-- Import -->
+    <div class="control-block">
+      <div class="block-label">Sample</div>
+      <div class="transport-btns">
+        <button id="btn-import" class="btn">↑ LOAD</button>
+        <button id="btn-clear-pad" class="btn">✕ CLR</button>
+      </div>
+    </div>
+
   </div>
 
-  <!-- Effects sends -->
-  <div class="effects-section">
-    <div class="effects-label">FX Sends — selected pad</div>
-    <div class="sends">
-      <div class="send">
-        <span class="send-name">Reverb</span>
-        <input type="range" class="send-knob" data-send="reverb" min="0" max="1" step="0.01" value="0" />
-        <span class="knob-val">0</span>
+  <div class="divider"></div>
+
+  <!-- Pad controls (pitch + volume + sends) -->
+  <div class="pad-controls-section">
+    <div class="pad-controls-label" id="pad-controls-title">PAD 1 — controls</div>
+    <div class="pad-controls-grid">
+
+      <div class="pad-ctrl">
+        <span class="ctrl-name">Volume</span>
+        <input type="range" class="ctrl-slider" id="pad-volume" min="0" max="1" step="0.01" value="1" />
+        <span class="ctrl-val" id="pad-volume-val">100</span>
       </div>
-      <div class="send">
-        <span class="send-name">Delay</span>
-        <input type="range" class="send-knob" data-send="delay" min="0" max="1" step="0.01" value="0" />
-        <span class="knob-val">0</span>
+
+      <div class="pad-ctrl">
+        <span class="ctrl-name">Pitch</span>
+        <input type="range" class="ctrl-slider" id="pad-pitch" min="0.25" max="4" step="0.01" value="1" />
+        <span class="ctrl-val" id="pad-pitch-val">1.00×</span>
       </div>
-      <div class="send">
-        <span class="send-name">Filter</span>
-        <input type="range" class="send-knob" data-send="filter" min="0" max="1" step="0.01" value="0" />
-        <span class="knob-val">0</span>
+
+      <div class="pad-ctrl">
+        <span class="ctrl-name">Reverb</span>
+        <input type="range" class="send-knob ctrl-slider" data-send="reverb" min="0" max="1" step="0.01" value="0" />
+        <span class="knob-val ctrl-val">0</span>
       </div>
-      <div class="send">
-        <span class="send-name">Drive</span>
-        <input type="range" class="send-knob" data-send="distortion" min="0" max="1" step="0.01" value="0" />
-        <span class="knob-val">0</span>
+
+      <div class="pad-ctrl">
+        <span class="ctrl-name">Delay</span>
+        <input type="range" class="send-knob ctrl-slider" data-send="delay" min="0" max="1" step="0.01" value="0" />
+        <span class="knob-val ctrl-val">0</span>
       </div>
+
+      <div class="pad-ctrl">
+        <span class="ctrl-name">Filter</span>
+        <input type="range" class="send-knob ctrl-slider" data-send="filter" min="0" max="1" step="0.01" value="0" />
+        <span class="knob-val ctrl-val">0</span>
+      </div>
+
+      <div class="pad-ctrl">
+        <span class="ctrl-name">Drive</span>
+        <input type="range" class="send-knob ctrl-slider" data-send="distortion" min="0" max="1" step="0.01" value="0" />
+        <span class="knob-val ctrl-val">0</span>
+      </div>
+
     </div>
   </div>
 
-  <!-- Bottom strip -->
-  <div class="bottom-strip">
-    <span class="bottom-label">drag audio files onto pads · hold REC + tap pad to mic record</span>
-    <button id="btn-import" class="btn">↑ IMPORT</button>
-    <input type="file" id="file-input" accept="audio/*" style="display:none" />
+  <!-- Footer hint -->
+  <div class="footer-hint">
+    keys: A–F · G–K · Z–V &nbsp;|&nbsp; space: play/stop &nbsp;|&nbsp; drag audio onto pads &nbsp;|&nbsp; hold REC + tap pad = mic record
   </div>
 
 </div>
 
+<input type="file" id="file-input" accept="audio/*" style="display:none" />
 <script type="module" src="js/app.js"></script>
 </body>
 </html>
