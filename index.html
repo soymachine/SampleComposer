@@ -110,6 +110,7 @@
         <button id="btn-play"   class="btn">▶ PLAY</button>
         <button id="btn-stop"   class="btn active">■ STOP</button>
         <button id="btn-record" class="btn">● REC</button>
+        <button id="btn-resample" class="btn" title="Record master output to pad">⏺ RES</button>
       </div>
     </div>
 
@@ -168,6 +169,15 @@
       </div>
     </div>
 
+    <!-- MIDI -->
+    <div class="control-block">
+      <div class="block-label">MIDI</div>
+      <div class="midi-row">
+        <button id="btn-midi" class="btn btn-sm">CONNECT</button>
+        <span id="midi-status" class="midi-status">—</span>
+      </div>
+    </div>
+
   </div>
 
   <div class="divider"></div>
@@ -177,8 +187,9 @@
     <div class="pad-controls-header">
       <div class="pad-controls-label" id="pad-controls-title">PAD 1 — controls</div>
       <div class="pad-mute-solo">
-        <button id="pad-mute-btn" class="btn btn-sm pad-state-btn" title="Mute this pad">M</button>
-        <button id="pad-solo-btn" class="btn btn-sm pad-state-btn" title="Solo this pad">S</button>
+        <button id="pad-mute-btn"   class="btn btn-sm pad-state-btn" title="Mute this pad">M</button>
+        <button id="pad-solo-btn"   class="btn btn-sm pad-state-btn" title="Solo this pad">S</button>
+        <button id="pad-reverse-btn" class="btn btn-sm pad-state-btn" title="Reverse playback">REV</button>
       </div>
     </div>
     <div class="pad-controls-grid">
@@ -220,11 +231,42 @@
       </div>
 
     </div>
+
+    <!-- Mute group row -->
+    <div class="mute-group-row">
+      <span class="block-sublabel">MUTE&nbsp;GROUP</span>
+      <div class="mute-group-btns">
+        <button class="mg-btn active" data-mg="0">—</button>
+        <button class="mg-btn" data-mg="1">1</button>
+        <button class="mg-btn" data-mg="2">2</button>
+        <button class="mg-btn" data-mg="3">3</button>
+        <button class="mg-btn" data-mg="4">4</button>
+      </div>
+      <span class="mg-hint">hi-hat tip: open+closed = same group</span>
+    </div>
+
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Song mode chain -->
+  <div class="song-section">
+    <div class="song-header">
+      <span class="seq-label">Song Chain</span>
+      <div class="song-header-btns">
+        <button id="btn-song-toggle" class="btn btn-sm">OFF</button>
+        <button id="btn-song-add"    class="btn btn-sm">+ ADD</button>
+        <button id="btn-song-clear"  class="btn btn-sm">CLR</button>
+      </div>
+    </div>
+    <div id="song-chain" class="song-chain">
+      <span class="song-empty">add groups to chain then toggle ON</span>
+    </div>
   </div>
 
   <!-- Footer hint -->
   <div class="footer-hint">
-    keys: A–F · G–K · Z–V &nbsp;|&nbsp; space: play/stop &nbsp;|&nbsp; drag audio onto pads &nbsp;|&nbsp; hold REC + tap pad = mic record
+    keys: A–F · G–K · Z–V &nbsp;|&nbsp; space: play/stop &nbsp;|&nbsp; drag audio onto pads &nbsp;|&nbsp; hold REC + tap pad = mic record &nbsp;|&nbsp; shift+click step = cycle probability
   </div>
 
 </div>

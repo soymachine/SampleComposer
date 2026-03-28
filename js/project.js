@@ -34,6 +34,8 @@ export class ProjectManager {
           trimEnd:    slot.trimEnd   ?? 1,
           muted:      this.bank.isMuted(i),
           soloed:     this.bank.isSoloed(i),
+          reverse:    slot.reverse   ?? false,
+          muteGroup:  slot.muteGroup ?? 0,
           audio:      audioBufferToBase64(slot.buffer),
         });
       } else {
@@ -53,13 +55,15 @@ export class ProjectManager {
       groups: this.seq.groups.map(g =>
         g.map(pad =>
           pad.map(step => ({
-            active:     step.active,
-            volume:     step.volume,
-            pitch:      step.pitch,
-            sendLevels: { ...step.sendLevels },
+            active:      step.active,
+            volume:      step.volume,
+            pitch:       step.pitch,
+            sendLevels:  { ...step.sendLevels },
+            probability: step.probability ?? 1,
           }))
         )
       ),
+      songChain: seq.songChain.slice(),
       pads,
     };
 
@@ -86,6 +90,7 @@ export class ProjectManager {
     if (typeof data.stepsPerPattern === 'number') this.seq.stepsPerPattern = data.stepsPerPattern;
     if (typeof data.swing === 'number')           this.seq.swing = data.swing;
     if (typeof data.activeGroup === 'number')     this.seq.setGroup(data.activeGroup);
+    if (Array.isArray(data.songChain))            this.seq.setSongChain(data.songChain);
 
     // Patterns
     if (Array.isArray(data.groups)) {
@@ -123,6 +128,10 @@ export class ProjectManager {
         }
         if (padData.muted)  this.bank.mutedPads.add(i);
         if (padData.soloed) this.bank.soloedPads.add(i);
+        if (slot) {
+          slot.reverse   = padData.reverse    ?? false;
+          slot.muteGroup = padData.muteGroup  ?? 0;
+        }
       } catch (err) {
         console.warn(`KO·WEB: pad ${i + 1} failed to decode audio`, err);
         this.bank.clear(i);

@@ -1,27 +1,32 @@
 /**
- * AudioEngine — wraps Web Audio API context, effects chain, and master bus.
+ * AudioEngine — Web Audio API context, effects chain, master bus.
+ * New in Sprint B/C: stopPad(), resampling via MediaStreamAudioDestinationNode.
  */
 export class AudioEngine {
   constructor() {
-    this.ctx = null;
-    this.masterGain = null;
-    this.compressor = null;
-    this.sends = {}; // named effect send buses
-    this.activeSources = new Map(); // padIndex → currently-playing BufferSourceNode
+    this.ctx           = null;
+    this.masterGain    = null;
+    this.compressor    = null;
+    this.sends         = {};
+    this.activeSources = new Map(); // padIndex → BufferSourceNode
+
+    // Resampling state
+    this._resampleDest     = null;
+    this._mediaRecorder    = null;
+    this._resampleChunks   = [];
+    this.onResampleDone    = null; // (AudioBuffer) => void
   }
 
-  /** Must be called from a user gesture to unlock AudioContext */
   init() {
     if (this.ctx) return;
     this.ctx = new (window.AudioContext || window.webkitAudioContext)();
 
-    // Master compressor (always on, subtle glue)
     this.compressor = this.ctx.createDynamicsCompressor();
     this.compressor.threshold.value = -12;
-    this.compressor.knee.value = 6;
-    this.compressor.ratio.value = 3;
-    this.compressor.attack.value = 0.003;
-    this.compressor.release.value = 0.25;
+    this.compressor.knee.value      = 6;
+    this.compressor.ratio.value     = 3;
+    this.compressor.attack.value    = 0.003;
+    this.compressor.release.value   = 0.25;
 
     this.masterGain = this.ctx.createGain();
     this.masterGain.gain.value = 0.9;
@@ -33,64 +38,55 @@ export class AudioEngine {
   }
 
   _buildEffects() {
-    // Delay send
-    const delay = this.ctx.createDelay(2.0);
-    delay.delayTime.value = 0.375; // 8th note at 80bpm-ish default
-    const delayFeedback = this.ctx.createGain();
-    delayFeedback.gain.value = 0.35;
-    const delayReturn = this.ctx.createGain();
-    delayReturn.gain.value = 0.7;
-    delay.connect(delayFeedback);
-    delayFeedback.connect(delay);
-    delay.connect(delayReturn);
-    delayReturn.connect(this.compressor);
-    this.sends.delay = { input: delay, param: delay.delayTime, feedbackGain: delayFeedback };
+    // Delay
+    const delay         = this.ctx.createDelay(2.0);
+    delay.delayTime.value = 0.375;
+    const delayFb       = this.ctx.createGain();
+    delayFb.gain.value  = 0.35;
+    const delayRet      = this.ctx.createGain();
+    delayRet.gain.value = 0.7;
+    delay.connect(delayFb); delayFb.connect(delay);
+    delay.connect(delayRet); delayRet.connect(this.compressor);
+    this.sends.delay = { input: delay, param: delay.delayTime, feedbackGain: delayFb };
 
-    // Reverb send (simple convolver approximation with a gain-based IR)
-    const reverb = this.ctx.createConvolver();
-    reverb.buffer = this._buildImpulseResponse(2.5, 3.0, false);
-    const reverbReturn = this.ctx.createGain();
-    reverbReturn.gain.value = 0.6;
-    reverb.connect(reverbReturn);
-    reverbReturn.connect(this.compressor);
+    // Reverb
+    const reverb       = this.ctx.createConvolver();
+    reverb.buffer      = this._buildImpulseResponse(2.5, 3.0, false);
+    const reverbRet    = this.ctx.createGain();
+    reverbRet.gain.value = 0.6;
+    reverb.connect(reverbRet); reverbRet.connect(this.compressor);
     this.sends.reverb = { input: reverb };
 
-    // Filter send (low-pass sweep)
-    const filter = this.ctx.createBiquadFilter();
-    filter.type = 'lowpass';
+    // Filter send
+    const filter       = this.ctx.createBiquadFilter();
+    filter.type        = 'lowpass';
     filter.frequency.value = 8000;
-    filter.Q.value = 1.0;
+    filter.Q.value     = 1.0;
     filter.connect(this.compressor);
-    this.sends.filter = { input: filter, node: filter };
+    this.sends.filter  = { input: filter, node: filter };
 
-    // Distortion / saturation send
-    const distortion = this.ctx.createWaveShaper();
-    distortion.curve = this._buildDistortionCurve(120);
-    distortion.oversample = '4x';
-    const distReturn = this.ctx.createGain();
-    distReturn.gain.value = 0.5;
-    distortion.connect(distReturn);
-    distReturn.connect(this.compressor);
-    this.sends.distortion = { input: distortion };
+    // Distortion
+    const dist         = this.ctx.createWaveShaper();
+    dist.curve         = this._buildDistortionCurve(120);
+    dist.oversample    = '4x';
+    const distRet      = this.ctx.createGain();
+    distRet.gain.value = 0.5;
+    dist.connect(distRet); distRet.connect(this.compressor);
+    this.sends.distortion = { input: dist };
   }
 
-  /** Decode raw ArrayBuffer into AudioBuffer */
   async decodeAudio(arrayBuffer) {
     this.init();
     return this.ctx.decodeAudioData(arrayBuffer);
   }
 
-  /**
-   * Play a buffer immediately or at a scheduled time.
-   * Returns the source node so caller can stop it.
-   */
   playSample({ buffer, when = 0, pitch = 1.0, volume = 1.0, sendLevels = {}, padIndex = null }) {
     if (!this.ctx || !buffer) return null;
     const startTime = when || this.ctx.currentTime;
 
-    // Stop the previous instance for this pad so it retriggers cleanly
+    // Stop previous instance for this pad
     if (padIndex !== null && this.activeSources.has(padIndex)) {
-      try { this.activeSources.get(padIndex).stop(startTime); } catch (_) { /* already ended */ }
+      try { this.activeSources.get(padIndex).stop(startTime); } catch (_) {}
       this.activeSources.delete(padIndex);
     }
 
@@ -104,17 +100,15 @@ export class AudioEngine {
     source.connect(gainNode);
     gainNode.connect(this.compressor);
 
-    // Route to sends
     for (const [name, level] of Object.entries(sendLevels)) {
       if (level > 0 && this.sends[name]) {
-        const sendGain = this.ctx.createGain();
-        sendGain.gain.value = level;
-        gainNode.connect(sendGain);
-        sendGain.connect(this.sends[name].input);
+        const sg = this.ctx.createGain();
+        sg.gain.value = level;
+        gainNode.connect(sg);
+        sg.connect(this.sends[name].input);
       }
     }
 
-    // Track so the next trigger can cut this one
     if (padIndex !== null) {
       this.activeSources.set(padIndex, source);
       source.onended = () => {
@@ -128,11 +122,18 @@ export class AudioEngine {
     return source;
   }
 
-  /** Update delay time based on BPM (synced to 8th notes) */
+  /** Stop a pad's current source at a scheduled time (used by mute groups) */
+  stopPad(padIndex, when = 0) {
+    if (!this.activeSources.has(padIndex)) return;
+    const t = when || (this.ctx?.currentTime ?? 0);
+    try { this.activeSources.get(padIndex).stop(t); } catch (_) {}
+    this.activeSources.delete(padIndex);
+  }
+
   updateDelayForBPM(bpm) {
     if (!this.sends.delay) return;
-    const eighthNote = (60 / bpm) / 2;
-    this.sends.delay.param.setTargetAtTime(eighthNote, this.ctx.currentTime, 0.01);
+    const eighth = (60 / bpm) / 2;
+    this.sends.delay.param.setTargetAtTime(eighth, this.ctx.currentTime, 0.01);
   }
 
   setFilterCutoff(hz) {
@@ -140,36 +141,81 @@ export class AudioEngine {
     this.sends.filter.node.frequency.setTargetAtTime(hz, this.ctx.currentTime, 0.02);
   }
 
-  get currentTime() {
-    return this.ctx ? this.ctx.currentTime : 0;
+  // ── Resampling ─────────────────────────────────────────────────────────────
+
+  get isResampling() { return this._mediaRecorder?.state === 'recording'; }
+
+  startResampling() {
+    if (!this.ctx) throw new Error('Init audio first.');
+    if (this.isResampling) return;
+
+    this._resampleDest   = this.ctx.createMediaStreamDestination();
+    this._resampleChunks = [];
+
+    // Tap the master gain into the recording destination
+    this.masterGain.connect(this._resampleDest);
+
+    // Prefer wav if available, fall back to webm/ogg
+    const mimeType = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/webm', '']
+      .find(m => !m || MediaRecorder.isTypeSupported(m)) ?? '';
+
+    this._mediaRecorder = new MediaRecorder(
+      this._resampleDest.stream,
+      mimeType ? { mimeType } : undefined
+    );
+
+    this._mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) this._resampleChunks.push(e.data);
+    };
+
+    this._mediaRecorder.onstop = async () => {
+      this.masterGain.disconnect(this._resampleDest);
+      this._resampleDest = null;
+
+      const blob        = new Blob(this._resampleChunks);
+      const arrayBuffer = await blob.arrayBuffer();
+      try {
+        const decoded = await this.ctx.decodeAudioData(arrayBuffer);
+        if (this.onResampleDone) this.onResampleDone(decoded);
+      } catch (err) {
+        console.error('Resample decode failed:', err);
+      }
+    };
+
+    this._mediaRecorder.start(100); // collect data every 100 ms
   }
 
-  get sampleRate() {
-    return this.ctx ? this.ctx.sampleRate : 44100;
+  stopResampling() {
+    if (this._mediaRecorder?.state === 'recording') {
+      this._mediaRecorder.stop();
+    }
   }
 
-  // --- helpers ---
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  get currentTime() { return this.ctx ? this.ctx.currentTime : 0; }
+  get sampleRate()  { return this.ctx ? this.ctx.sampleRate  : 44100; }
 
   _buildImpulseResponse(duration, decay, reverse) {
-    const length = this.ctx.sampleRate * duration;
-    const impulse = this.ctx.createBuffer(2, length, this.ctx.sampleRate);
+    const len     = this.ctx.sampleRate * duration;
+    const impulse = this.ctx.createBuffer(2, len, this.ctx.sampleRate);
     for (let c = 0; c < 2; c++) {
-      const channel = impulse.getChannelData(c);
-      for (let i = 0; i < length; i++) {
-        const n = reverse ? length - i : i;
-        channel[i] = (Math.random() * 2 - 1) * Math.pow(1 - n / length, decay);
+      const ch = impulse.getChannelData(c);
+      for (let i = 0; i < len; i++) {
+        const n  = reverse ? len - i : i;
+        ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - n / len, decay);
       }
     }
     return impulse;
   }
 
   _buildDistortionCurve(amount) {
-    const samples = 256;
-    const curve = new Float32Array(samples);
-    for (let i = 0; i < samples; i++) {
-      const x = (i * 2) / samples - 1;
-      curve[i] = ((Math.PI + amount) * x) / (Math.PI + amount * Math.abs(x));
+    const n   = 256;
+    const cur = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const x = (i * 2) / n - 1;
+      cur[i]  = ((Math.PI + amount) * x) / (Math.PI + amount * Math.abs(x));
     }
-    return curve;
+    return cur;
   }
 }

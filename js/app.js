@@ -1,11 +1,12 @@
-import { AudioEngine }    from './audio-engine.js';
-import { Sequencer }      from './sequencer.js';
-import { Recorder }       from './recorder.js';
-import { SampleBank }     from './sample-bank.js';
-import { Slicer }         from './slicer.js';
-import { ProjectManager } from './project.js';
-import { exportWAV }      from './export.js';
-import { loadKit, KIT_NAMES } from './kits.js';
+import { AudioEngine }      from './audio-engine.js';
+import { Sequencer }        from './sequencer.js';
+import { Recorder }         from './recorder.js';
+import { SampleBank }       from './sample-bank.js';
+import { Slicer }           from './slicer.js';
+import { ProjectManager }   from './project.js';
+import { exportWAV }        from './export.js';
+import { loadKit }          from './kits.js';
+import { MidiController }   from './midi.js';
 
 // ─── Core ─────────────────────────────────────────────────────────────────────
 const engine    = new AudioEngine();
@@ -14,6 +15,7 @@ const seq       = new Sequencer(engine);
 const recorder  = new Recorder(engine);
 const slicer    = new Slicer(engine, bank);
 const project   = new ProjectManager(engine, bank, seq);
+const midi      = new MidiController();
 
 let activePad       = null;
 let recordTargetPad = null;
@@ -157,19 +159,40 @@ stepLenBtns.forEach(btn => {
 });
 
 steps.forEach((btn, stepIdx) => {
-  btn.addEventListener('click', () => {
+  btn.addEventListener('click', (e) => {
     if (activePad === null || stepIdx >= stepLength) return;
+
+    const s = seq.groups[seq.activeGroup][activePad][stepIdx];
+
+    if (e.shiftKey && s.active) {
+      // Shift+click on active step → cycle probability
+      const prob = seq.cycleStepProbability(seq.activeGroup, activePad, stepIdx);
+      _applyStepProbabilityStyle(btn, prob);
+      displayInfo.textContent = `P${Math.round(prob * 100)}%`;
+      return;
+    }
+
     const active = seq.toggleStep(seq.activeGroup, activePad, stepIdx);
     btn.classList.toggle('on', active);
+    btn.removeAttribute('data-prob'); // reset opacity when toggling
   });
 });
+
+function _applyStepProbabilityStyle(btn, prob) {
+  btn.removeAttribute('data-prob');
+  if (prob < 1) btn.dataset.prob = Math.round(prob * 100).toString();
+}
 
 function updateStepGrid() {
   if (activePad === null) return;
   steps.forEach((btn, stepIdx) => {
     const s = seq.groups[seq.activeGroup][activePad][stepIdx];
-    btn.classList.toggle('on', s.active);
+    btn.classList.toggle('on',       s.active);
     btn.classList.toggle('inactive', stepIdx >= stepLength);
+    btn.removeAttribute('data-prob');
+    if (s.active && s.probability < 1) {
+      btn.dataset.prob = Math.round(s.probability * 100).toString();
+    }
   });
 }
 
@@ -401,13 +424,21 @@ swingSlider.addEventListener('input', () => {
 });
 
 // ─── Mute / Solo ──────────────────────────────────────────────────────────────
-const padMuteBtn = document.getElementById('pad-mute-btn');
-const padSoloBtn = document.getElementById('pad-solo-btn');
+const padMuteBtn    = document.getElementById('pad-mute-btn');
+const padSoloBtn    = document.getElementById('pad-solo-btn');
+const padReverseBtn = document.getElementById('pad-reverse-btn');
+const mgBtns        = Array.from(document.querySelectorAll('.mg-btn'));
 
-function updateMuteSoloBtns(padIndex) {
-  padMuteBtn.classList.toggle('mute-active', bank.isMuted(padIndex));
-  padSoloBtn.classList.toggle('solo-active', bank.isSoloed(padIndex));
+function updatePadStateUI(padIndex) {
+  padMuteBtn.classList.toggle('mute-active',  bank.isMuted(padIndex));
+  padSoloBtn.classList.toggle('solo-active',  bank.isSoloed(padIndex));
+  padReverseBtn.classList.toggle('rev-active', bank.isReversed(padIndex));
+  const mg = bank.getMuteGroup(padIndex);
+  mgBtns.forEach(b => b.classList.toggle('active', parseInt(b.dataset.mg) === mg));
 }
+
+// Keep backwards-compatible alias used in earlier code
+function updateMuteSoloBtns(padIndex) { updatePadStateUI(padIndex); }
 
 padMuteBtn.addEventListener('click', () => {
   if (activePad === null) return;
@@ -421,6 +452,25 @@ padSoloBtn.addEventListener('click', () => {
   bank.toggleSolo(activePad);
   updateMuteSoloBtns(activePad);
   displayInfo.textContent = bank.isSoloed(activePad) ? `PAD ${activePad + 1} SOLO` : 'SOLO OFF';
+});
+
+padReverseBtn.addEventListener('click', () => {
+  if (activePad === null) return;
+  const rev = bank.toggleReverse(activePad);
+  padReverseBtn.classList.toggle('rev-active', rev);
+  drawWaveform(activePad); // re-draw mirrored waveform
+  displayInfo.textContent = rev ? `PAD ${activePad + 1} REV` : `PAD ${activePad + 1} FWD`;
+});
+
+// ── Mute groups ───────────────────────────────────────────────────────────────
+mgBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (activePad === null) return;
+    const mg = parseInt(btn.dataset.mg);
+    bank.setMuteGroup(activePad, mg);
+    mgBtns.forEach(b => b.classList.toggle('active', parseInt(b.dataset.mg) === mg));
+    displayInfo.textContent = mg === 0 ? 'GRP NONE' : `GRP ${mg}`;
+  });
 });
 
 // ─── Factory Kits ─────────────────────────────────────────────────────────────
@@ -484,6 +534,7 @@ projectFileInput.addEventListener('change', async () => {
     groupBtns.forEach((b, i) => b.classList.toggle('active', i === seq.activeGroup));
     selectPad(activePad ?? 0);
     updateStepGrid();
+    renderSongChain();
     displayInfo.textContent = loadedName.toUpperCase().slice(0, 8);
   } catch (e) {
     console.error(e);
@@ -514,6 +565,153 @@ document.getElementById('btn-export-wav').addEventListener('click', async () => 
     displayInfo.textContent = e.message.slice(0, 8).toUpperCase();
   }
   document.getElementById('btn-export-wav').disabled = false;
+});
+
+// ─── Song mode ────────────────────────────────────────────────────────────────
+const songChainEl   = document.getElementById('song-chain');
+const btnSongToggle = document.getElementById('btn-song-toggle');
+const btnSongAdd    = document.getElementById('btn-song-add');
+const btnSongClear  = document.getElementById('btn-song-clear');
+
+function renderSongChain() {
+  songChainEl.innerHTML = '';
+  if (seq.songChain.length === 0) {
+    songChainEl.innerHTML = '<span class="song-empty">add groups to chain then toggle ON</span>';
+    return;
+  }
+  seq.songChain.forEach((groupIdx, pos) => {
+    const btn = document.createElement('button');
+    btn.className  = 'song-slot';
+    btn.textContent = 'ABCD'[groupIdx];
+    btn.title = 'Left-click: cycle group  |  Right-click: remove';
+    if (seq.songMode && seq._songPos === pos) btn.classList.add('active-slot');
+    // Left click → cycle group A→B→C→D
+    btn.addEventListener('click', () => {
+      seq.setChainSlot(pos, (groupIdx + 1) % 4);
+      renderSongChain();
+    });
+    // Right-click → remove slot
+    btn.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      seq.removeChainSlot(pos);
+      renderSongChain();
+    });
+    songChainEl.appendChild(btn);
+  });
+}
+
+btnSongToggle.addEventListener('click', () => {
+  const on = seq.toggleSongMode();
+  btnSongToggle.textContent = on ? 'ON' : 'OFF';
+  btnSongToggle.classList.toggle('active', on);
+  displayInfo.textContent = on ? 'SONG ON' : 'SONG OFF';
+  if (on && seq.songChain.length > 0) {
+    seq.activeGroup = seq.songChain[0];
+    groupBtns.forEach((b, i) => b.classList.toggle('active', i === seq.activeGroup));
+    updateStepGrid();
+  }
+  renderSongChain();
+});
+
+btnSongAdd.addEventListener('click', () => {
+  seq.addChainSlot(seq.activeGroup);
+  renderSongChain();
+});
+
+btnSongClear.addEventListener('click', () => {
+  seq.setSongChain([]);
+  if (seq.songMode) {
+    seq.songMode = false;
+    btnSongToggle.textContent = 'OFF';
+    btnSongToggle.classList.remove('active');
+  }
+  renderSongChain();
+});
+
+// Update song chain UI when group auto-advances in song mode
+seq.onGroupChange = (groupIdx) => {
+  groupBtns.forEach((b, i) => b.classList.toggle('active', i === groupIdx));
+  updateStepGrid();
+  renderSongChain(); // re-highlights active slot
+  displayInfo.textContent = `SONG ${'ABCD'[groupIdx]}`;
+};
+
+// ─── Resampling ───────────────────────────────────────────────────────────────
+const btnResample = document.getElementById('btn-resample');
+
+engine.onResampleDone = (buf) => {
+  // Find the first empty pad, or fall back to the active pad
+  let target = activePad;
+  for (let i = 0; i < 12; i++) {
+    if (!bank.hasSample(i)) { target = i; break; }
+  }
+  bank.setSample(target, buf, `RESAMPLE`);
+  selectPad(target);
+  btnResample.classList.remove('armed');
+  btnResample.textContent = '⏺ RES';
+  displayInfo.textContent = `PAD ${target + 1} RES`;
+};
+
+btnResample.addEventListener('click', () => {
+  engine.init();
+  if (engine.isResampling) {
+    engine.stopResampling();
+    btnResample.classList.remove('armed');
+    btnResample.textContent = '⏺ RES';
+    displayInfo.textContent = 'RES STOP';
+  } else {
+    engine.startResampling();
+    btnResample.classList.add('armed');
+    btnResample.textContent = '■ STOP';
+    displayInfo.textContent = 'REC RES…';
+  }
+});
+
+// ─── MIDI ─────────────────────────────────────────────────────────────────────
+const btnMidi    = document.getElementById('btn-midi');
+const midiStatus = document.getElementById('midi-status');
+
+midi.onStatusChange = (status) => {
+  const labels = {
+    connected:   'CONNECTED',
+    disconnected: 'NO DEVICE',
+    denied:      'DENIED',
+    unsupported: 'NO SUPPORT',
+  };
+  midiStatus.textContent = labels[status] ?? status.toUpperCase();
+  midiStatus.classList.toggle('connected', status === 'connected');
+  btnMidi.classList.toggle('active', status === 'connected');
+};
+
+midi.onPadHit = (padIndex, velocity) => {
+  // Trigger pad exactly as if clicked — velocity scales volume
+  engine.init();
+  const buf = bank.getBuffer(padIndex);
+  if (buf && bank.isAudible(padIndex)) {
+    const slot = bank.getSample(padIndex);
+    engine.playSample({
+      buffer:     buf,
+      pitch:      slot.pitch,
+      volume:     slot.volume * velocity,
+      sendLevels: slot.sendLevels,
+      padIndex,
+    });
+  }
+  const padEl = pads[padIndex];
+  padEl.classList.add('flash');
+  setTimeout(() => padEl.classList.remove('flash'), 120);
+  if (seq.isRecording) seq.recordHit(padIndex, velocity);
+};
+
+btnMidi.addEventListener('click', async () => {
+  if (midi.enabled) {
+    midi.disconnect();
+    btnMidi.textContent = 'CONNECT';
+  } else {
+    btnMidi.textContent = '…';
+    await midi.connect();
+    btnMidi.textContent = midi.enabled ? 'DISCONNECT' : 'CONNECT';
+  }
 });
 
 // ─── Slicer ───────────────────────────────────────────────────────────────────

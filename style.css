@@ -657,6 +657,140 @@ input[type=range]#pad-pitch::-webkit-slider-thumb  { background: #a0a0ff; }
   box-shadow: 0 0 0 2px #3090ff, 0 6px 0 rgba(0,0,0,0.5);
 }
 
+/* REV button active state */
+.pad-state-btn.rev-active {
+  background: #2a1a6a;
+  color: #b080ff;
+  box-shadow: 0 3px 0 #0e0a2a, 0 0 6px rgba(140,80,255,0.3);
+}
+
+/* Mute group row */
+.mute-group-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+.mute-group-btns { display: flex; gap: 4px; }
+
+.mg-btn {
+  width: 24px;
+  height: 20px;
+  background: var(--btn-bg);
+  border: none;
+  border-radius: 3px;
+  color: rgba(255,255,255,0.35);
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 2px 0 rgba(0,0,0,0.4);
+  transition: all 0.05s;
+}
+
+.mg-btn.active {
+  background: var(--accent2);
+  color: #111;
+  box-shadow: 0 2px 0 #7a5010;
+}
+
+.mg-hint {
+  font-size: 7px;
+  color: var(--text-mid);
+  opacity: 0.6;
+  letter-spacing: 0.5px;
+}
+
+/* ── Song chain ──────────────────────────────────────────────────────────── */
+.song-section { margin-bottom: 12px; }
+
+.song-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.song-header-btns { display: flex; gap: 5px; }
+
+.song-chain {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: 28px;
+  padding: 5px 6px;
+  background: var(--display-bg);
+  border-radius: 5px;
+  border: 1px solid rgba(255,255,255,0.05);
+  align-items: center;
+}
+
+.song-empty {
+  font-size: 8px;
+  color: var(--display-dim);
+  letter-spacing: 1px;
+}
+
+.song-slot {
+  width: 28px;
+  height: 22px;
+  background: var(--btn-bg);
+  border: none;
+  border-radius: 4px;
+  color: rgba(255,255,255,0.6);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 2px 0 rgba(0,0,0,0.4);
+  transition: background 0.1s;
+  position: relative;
+}
+
+.song-slot.active-slot {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 2px 0 var(--accent-dark);
+}
+
+.song-slot:hover { background: #4a3e36; }
+
+/* Step probability visual */
+.step-btn[data-prob="75"]  { opacity: 0.80; }
+.step-btn[data-prob="50"]  { opacity: 0.58; }
+.step-btn[data-prob="25"]  { opacity: 0.36; }
+
+.step-btn.on[data-prob="75"]  { opacity: 0.82; }
+.step-btn.on[data-prob="50"]  { opacity: 0.60; }
+.step-btn.on[data-prob="25"]  { opacity: 0.38; }
+
+/* MIDI row */
+.midi-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 2px;
+}
+
+.midi-status {
+  font-size: 8px;
+  color: var(--text-mid);
+  letter-spacing: 1px;
+}
+
+.midi-status.connected { color: var(--display-fg); }
+
+/* Resample button armed state */
+#btn-resample.armed {
+  background: #5a1010;
+  color: #ff4040;
+  animation: blink-rec 0.8s ease-in-out infinite;
+  box-shadow: 0 3px 0 #2a0808, 0 0 8px rgba(255,40,40,0.4);
+}
+
 /* ── Highlight button variant ────────────────────────────────────────────── */
 .btn-highlight {
   background: #2a3a28;
