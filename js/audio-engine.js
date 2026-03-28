@@ -7,6 +7,7 @@ export class AudioEngine {
     this.masterGain = null;
     this.compressor = null;
     this.sends = {}; // named effect send buses
+    this.activeSources = new Map(); // padIndex → currently-playing BufferSourceNode
   }
 
   /** Must be called from a user gesture to unlock AudioContext */
@@ -83,9 +84,15 @@ export class AudioEngine {
    * Play a buffer immediately or at a scheduled time.
    * Returns the source node so caller can stop it.
    */
-  playSample({ buffer, when = 0, pitch = 1.0, volume = 1.0, sendLevels = {} }) {
+  playSample({ buffer, when = 0, pitch = 1.0, volume = 1.0, sendLevels = {}, padIndex = null }) {
     if (!this.ctx || !buffer) return null;
     const startTime = when || this.ctx.currentTime;
+
+    // Stop the previous instance for this pad so it retriggers cleanly
+    if (padIndex !== null && this.activeSources.has(padIndex)) {
+      try { this.activeSources.get(padIndex).stop(startTime); } catch (_) { /* already ended */ }
+      this.activeSources.delete(padIndex);
+    }
 
     const source = this.ctx.createBufferSource();
     source.buffer = buffer;
@@ -105,6 +112,16 @@ export class AudioEngine {
         gainNode.connect(sendGain);
         sendGain.connect(this.sends[name].input);
       }
+    }
+
+    // Track so the next trigger can cut this one
+    if (padIndex !== null) {
+      this.activeSources.set(padIndex, source);
+      source.onended = () => {
+        if (this.activeSources.get(padIndex) === source) {
+          this.activeSources.delete(padIndex);
+        }
+      };
     }
 
     source.start(startTime);

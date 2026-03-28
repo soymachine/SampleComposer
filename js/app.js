@@ -67,7 +67,7 @@ pads.forEach((padEl, i) => {
     const buf = bank.getBuffer(i);
     if (buf) {
       const slot = bank.getSample(i);
-      engine.playSample({ buffer: buf, pitch: slot.pitch, volume: slot.volume, sendLevels: slot.sendLevels });
+      engine.playSample({ buffer: buf, pitch: slot.pitch, volume: slot.volume, sendLevels: slot.sendLevels, padIndex: i });
     }
 
     // Press + glow

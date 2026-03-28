@@ -120,6 +120,7 @@ export class Sequencer {
             pitch: s.pitch,
             volume: s.volume,
             sendLevels: s.sendLevels,
+            padIndex: pad,
           });
         }
       }
