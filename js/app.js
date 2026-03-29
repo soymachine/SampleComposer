@@ -720,13 +720,23 @@ btnMidi.addEventListener('click', async () => {
 });
 
 // ─── Slicer ───────────────────────────────────────────────────────────────────
-const slicerOverlay   = document.getElementById('slicer-overlay');
-const slicerCanvas    = document.getElementById('slicer-canvas');
-const slicerFileInput = document.getElementById('slicer-file-input');
-const slicerDropZone  = document.getElementById('slicer-drop-zone');
-const slicerFilename  = document.getElementById('slicer-filename');
-const slicerPadBtns   = Array.from(document.querySelectorAll('.slicer-pad-btn'));
-let slicerRaf         = null;
+const slicerOverlay    = document.getElementById('slicer-overlay');
+const slicerCanvas     = document.getElementById('slicer-canvas');
+const slicerFileInput  = document.getElementById('slicer-file-input');
+const slicerDropZone   = document.getElementById('slicer-drop-zone');
+const slicerFilename   = document.getElementById('slicer-filename');
+const slicerPadBtns    = Array.from(document.querySelectorAll('.slicer-pad-btn'));
+const slicerModeSingle = document.getElementById('slicer-mode-single');
+const slicerModeChop   = document.getElementById('slicer-mode-chop');
+const slicerDetectCtrl = document.getElementById('slicer-detect-controls');
+const slicerDetectBtn  = document.getElementById('slicer-detect');
+const slicerSensSlider = document.getElementById('slicer-sensitivity');
+const slicerClearMkrs  = document.getElementById('slicer-clear-markers');
+const slicerMkrCount   = document.getElementById('slicer-marker-count');
+const slicerLoopBtn    = document.getElementById('slicer-loop');
+const slicerAssignAll  = document.getElementById('slicer-assign-all');
+const slicerHint       = document.getElementById('slicer-hint');
+let   slicerRaf        = null;
 
 function openSlicer() {
   engine.init();
@@ -775,6 +785,7 @@ async function loadSlicerFile(file) {
   slicer.loadBuffer(buf, file.name);
   slicerFilename.textContent = file.name;
   document.getElementById('slicer-zoom').value = 1;
+  _updateMarkerCount();
 }
 
 // Open slicer button
@@ -804,10 +815,22 @@ slicerDropZone.addEventListener('drop', async (e) => {
 });
 
 // Canvas mouse interaction
-slicerCanvas.addEventListener('mousedown',  (e) => slicer.onMouseDown(slicerCanvas, e));
+slicerCanvas.addEventListener('mousedown',  (e) => { slicer.onMouseDown(slicerCanvas, e); });
 slicerCanvas.addEventListener('mousemove',  (e) => slicer.onMouseMove(slicerCanvas, e));
 slicerCanvas.addEventListener('mouseup',    ()  => slicer.onMouseUp());
 slicerCanvas.addEventListener('mouseleave', ()  => slicer.onMouseUp());
+slicerCanvas.addEventListener('dblclick',   (e) => slicer.onDoubleClick(slicerCanvas, e));
+slicerCanvas.addEventListener('contextmenu',(e) => { e.preventDefault(); /* handled in slicer */ });
+
+// Scroll wheel → zoom
+slicerCanvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const cur    = parseFloat(document.getElementById('slicer-zoom').value);
+  const factor = e.deltaY > 0 ? 0.85 : 1.18;
+  const next   = Math.max(1, Math.min(32, cur * factor));
+  document.getElementById('slicer-zoom').value = next;
+  slicer.setZoom(next);
+}, { passive: false });
 
 // Touch support for slicer canvas
 slicerCanvas.addEventListener('touchstart', (e) => {
@@ -824,12 +847,67 @@ slicerCanvas.addEventListener('touchmove', (e) => {
 }, { passive: false });
 slicerCanvas.addEventListener('touchend', () => slicer.onMouseUp());
 
-// Slicer transport
+// ── Mode toggle ────────────────────────────────────────────────────────────
+function _setSlicerMode(mode) {
+  slicer.setMode(mode);
+  slicerModeSingle.classList.toggle('active', mode === 'single');
+  slicerModeChop.classList.toggle('active',   mode === 'chop');
+  const isChop = mode === 'chop';
+  slicerAssignAll.classList.toggle('hidden', !isChop);
+  slicerHint.textContent = isChop
+    ? 'dbl-click = add marker · right-click = remove · drag = move'
+    : 'drag handles to trim · drag region to move';
+  _updateMarkerCount();
+}
+
+slicerModeSingle.addEventListener('click', () => _setSlicerMode('single'));
+slicerModeChop.addEventListener(  'click', () => _setSlicerMode('chop'));
+
+// ── Transient detection ─────────────────────────────────────────────────────
+slicer.onMarkersChanged = _updateMarkerCount;
+
+function _updateMarkerCount() {
+  const n = slicer.sliceCount;
+  slicerMkrCount.textContent = `${n} SLICE${n !== 1 ? 'S' : ''}`;
+  slicerAssignAll.classList.toggle('hidden', slicer.mode !== 'chop' || n < 2);
+}
+
+slicerDetectBtn.addEventListener('click', () => {
+  engine.init();
+  if (!slicer.buffer) return;
+  const sens = parseFloat(slicerSensSlider.value);
+  const n    = slicer.detectTransients(sens, 0.07);
+  _setSlicerMode('chop');
+  displayInfo.textContent = `${n} SLICES`;
+});
+
+slicerClearMkrs.addEventListener('click', () => {
+  slicer.clearMarkers();
+  _updateMarkerCount();
+});
+
+// ── Playback ────────────────────────────────────────────────────────────────
 document.getElementById('slicer-play').addEventListener('click', () => {
   engine.init();
-  slicer.playRegion();
+  slicer.playRegion(false);
+  slicerLoopBtn.classList.remove('loop-active');
 });
-document.getElementById('slicer-stop').addEventListener('click', () => slicer.stopRegion());
+
+slicerLoopBtn.addEventListener('click', () => {
+  engine.init();
+  if (slicer.isPlaying && slicer._looping) {
+    slicer.stopRegion();
+    slicerLoopBtn.classList.remove('loop-active');
+  } else {
+    slicer.playRegion(true);
+    slicerLoopBtn.classList.add('loop-active');
+  }
+});
+
+document.getElementById('slicer-stop').addEventListener('click', () => {
+  slicer.stopRegion();
+  slicerLoopBtn.classList.remove('loop-active');
+});
 
 // Zoom
 const slicerZoomSlider = document.getElementById('slicer-zoom');
@@ -852,10 +930,24 @@ slicerPadBtns.forEach((btn) => {
     const padIndex = parseInt(btn.dataset.pad);
     slicer.sendToPad(padIndex);
     syncSlicerPadStates();
-    // Flash confirmation
     btn.classList.add('just-sent');
     setTimeout(() => btn.classList.remove('just-sent'), 600);
     displayInfo.textContent = `PAD ${padIndex + 1} SET`;
+  });
+});
+
+// Assign All: distributes chop slices → pads 1-12 in order
+slicerAssignAll.addEventListener('click', () => {
+  if (!slicer.buffer) return;
+  const count = slicer.assignAllToPads();
+  syncSlicerPadStates();
+  displayInfo.textContent = `${count} PADS SET`;
+  // Flash all assigned pad buttons
+  slicerPadBtns.slice(0, count).forEach((btn, i) => {
+    setTimeout(() => {
+      btn.classList.add('just-sent');
+      setTimeout(() => btn.classList.remove('just-sent'), 500);
+    }, i * 60);
   });
 });
 

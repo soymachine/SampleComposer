@@ -327,16 +327,35 @@
       </div>
     </div>
 
+    <!-- Mode + transient detection -->
+    <div class="slicer-mode-row">
+      <div class="slicer-mode-btns">
+        <button id="slicer-mode-single" class="btn btn-sm active">SINGLE</button>
+        <button id="slicer-mode-chop"   class="btn btn-sm">CHOP</button>
+      </div>
+      <div class="slicer-detect-controls" id="slicer-detect-controls">
+        <span class="slicer-time-label">SENS</span>
+        <input type="range" id="slicer-sensitivity" min="0.05" max="0.95" step="0.05" value="0.3" />
+        <button id="slicer-detect" class="btn btn-sm">⚡ AUTO</button>
+        <button id="slicer-clear-markers" class="btn btn-sm">✕ CLR</button>
+        <span id="slicer-marker-count" class="slicer-slice-count">0 SLICES</span>
+      </div>
+    </div>
+
     <!-- Playback controls -->
     <div class="slicer-transport">
       <button class="btn" id="slicer-play">▶ PREVIEW</button>
+      <button class="btn" id="slicer-loop">⟳ LOOP</button>
       <button class="btn" id="slicer-stop">■ STOP</button>
-      <span class="slicer-hint">drag handles to trim · drag region to move</span>
+      <span class="slicer-hint" id="slicer-hint">drag handles to trim · drag region to move</span>
     </div>
 
     <!-- Pad assignment grid -->
     <div class="slicer-pads-section">
-      <div class="slicer-pads-label">SEND SLICE TO PAD</div>
+      <div class="slicer-pads-label">
+        <span>SEND TO PAD</span>
+        <button id="slicer-assign-all" class="btn btn-sm btn-highlight hidden">⊙ ASSIGN ALL</button>
+      </div>
       <div class="slicer-pad-grid">
         <button class="slicer-pad-btn" data-pad="0">1</button>
         <button class="slicer-pad-btn" data-pad="1">2</button>

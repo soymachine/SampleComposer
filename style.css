@@ -1249,6 +1249,63 @@ input[type=range]#pad-pitch::-webkit-slider-thumb  { background: #a0a0ff; }
 
 .slicer-zoom-row input[type=range] { width: 100px; }
 
+/* Mode row + transient controls */
+.slicer-mode-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(0,0,0,0.2);
+  border-bottom: 1px solid rgba(57,255,20,0.06);
+  flex-wrap: wrap;
+}
+
+.slicer-mode-btns {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.slicer-mode-btns .btn.active {
+  background: var(--accent2);
+  color: #111;
+  box-shadow: 0 2px 0 #7a5010;
+}
+
+.slicer-detect-controls {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.slicer-detect-controls input[type=range] {
+  width: 90px;
+}
+
+.slicer-slice-count {
+  font-size: 8px;
+  font-weight: bold;
+  letter-spacing: 1.5px;
+  color: var(--accent);
+  min-width: 60px;
+}
+
+/* Loop button active */
+#slicer-loop.loop-active {
+  background: #0a2a3a;
+  color: #00d4ff;
+  box-shadow: 0 3px 0 #041520, 0 0 6px rgba(0,200,255,0.3);
+}
+
+/* Assign all button */
+.slicer-pads-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
 /* Transport */
 .slicer-transport {
   display: flex;
