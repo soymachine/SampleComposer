@@ -7,6 +7,9 @@ import { ProjectManager }   from './project.js';
 import { exportWAV }        from './export.js';
 import { loadKit }          from './kits.js';
 import { MidiController }   from './midi.js';
+import { getSupabase, SUPABASE_ENABLED } from './supabase-client.js';
+import { AuthManager }      from './auth.js';
+import { CloudManager }     from './cloud.js';
 
 // ─── Core ─────────────────────────────────────────────────────────────────────
 const engine    = new AudioEngine();
@@ -16,6 +19,8 @@ const recorder  = new Recorder(engine);
 const slicer    = new Slicer(engine, bank);
 const project   = new ProjectManager(engine, bank, seq);
 const midi      = new MidiController();
+const auth      = new AuthManager(null);   // sb client injected after lazy load
+const cloud     = new CloudManager(null, auth, engine);
 
 let activePad       = null;
 let recordTargetPad = null;
@@ -867,6 +872,289 @@ window.addEventListener('resize', () => {
     slicerCanvas.width = slicerCanvas.offsetWidth || 720;
   }
 });
+
+// ─── Auth + Cloud ─────────────────────────────────────────────────────────────
+const authBtn       = document.getElementById('auth-btn');
+const authModal     = document.getElementById('auth-modal');
+const authClose     = document.getElementById('auth-close');
+const authForm      = document.getElementById('auth-form');
+const authEmailInp  = document.getElementById('auth-email');
+const authPassInp   = document.getElementById('auth-password');
+const authSubmitBtn = document.getElementById('btn-auth-submit');
+const authError     = document.getElementById('auth-error');
+const authNote      = document.getElementById('auth-note');
+const authTabs      = Array.from(document.querySelectorAll('.auth-tab'));
+const btnGoogle     = document.getElementById('btn-google');
+const authTitle     = document.getElementById('auth-modal-title');
+
+const cloudModal         = document.getElementById('cloud-modal');
+const cloudClose         = document.getElementById('cloud-close');
+const cloudUserLabel     = document.getElementById('cloud-user-label');
+const btnSignout         = document.getElementById('btn-signout');
+const cloudTabs          = Array.from(document.querySelectorAll('.cloud-tab'));
+const cloudProjectsPanel = document.getElementById('cloud-projects-panel');
+const cloudSamplesPanel  = document.getElementById('cloud-samples-panel');
+const cloudProjectsList  = document.getElementById('cloud-projects-list');
+const cloudSamplesList   = document.getElementById('cloud-samples-list');
+const btnCloudSave       = document.getElementById('btn-cloud-save');
+const cloudSaveStatus    = document.getElementById('cloud-save-status');
+const btnCloudUpSample   = document.getElementById('btn-cloud-upload-sample');
+const cloudUploadStatus  = document.getElementById('cloud-upload-status');
+const uploadPadNum       = document.getElementById('upload-pad-num');
+const btnCloud           = document.getElementById('btn-cloud');
+
+let _authMode = 'signin'; // 'signin' | 'register'
+
+// Bootstrap Supabase lazily so the SDK only loads when actually used
+async function _ensureSupabase() {
+  if (auth._sb) return true;
+  if (!SUPABASE_ENABLED) return false;
+  const sb = await getSupabase();
+  if (!sb) return false;
+  auth._sb  = sb;
+  cloud._sb = sb;
+  await auth.init();
+  return true;
+}
+
+function _syncAuthUI() {
+  if (auth.isLoggedIn) {
+    authBtn.textContent = auth.userInitial;
+    authBtn.classList.add('logged-in');
+    authBtn.title = auth.userEmail;
+    btnCloud.classList.add('cloud-active');
+    cloudUserLabel.textContent = auth.userEmail;
+  } else {
+    authBtn.textContent = 'SIGN IN';
+    authBtn.classList.remove('logged-in');
+    authBtn.title = 'Sign in for cloud save';
+    btnCloud.classList.remove('cloud-active');
+  }
+}
+
+auth.onAuthChange = (_user) => { _syncAuthUI(); };
+
+// Auth button: open auth modal if logged out, cloud modal if logged in
+authBtn.addEventListener('click', async () => {
+  engine.init();
+  if (auth.isLoggedIn) {
+    _openCloudModal();
+  } else {
+    await _ensureSupabase();
+    if (!SUPABASE_ENABLED) {
+      displayInfo.textContent = 'NO CONFIG';
+      return;
+    }
+    authModal.classList.remove('hidden');
+  }
+});
+
+authClose.addEventListener('click', () => authModal.classList.add('hidden'));
+authModal.addEventListener('click', (e) => { if (e.target === authModal) authModal.classList.add('hidden'); });
+
+// Tab switch
+authTabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    _authMode = tab.dataset.tab;
+    authTabs.forEach(t => t.classList.toggle('active', t === tab));
+    authSubmitBtn.textContent = _authMode === 'signin' ? 'SIGN IN' : 'CREATE ACCOUNT';
+    authTitle.textContent     = _authMode === 'signin' ? 'SIGN IN' : 'REGISTER';
+    authError.textContent     = '';
+    authNote.textContent      = '';
+  });
+});
+
+// Google sign-in
+btnGoogle.addEventListener('click', async () => {
+  authError.textContent = '';
+  try { await auth.signInWithGoogle(); }
+  catch (e) { authError.textContent = e.message; }
+});
+
+// Email/password submit
+authForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  authError.textContent = '';
+  authNote.textContent  = '';
+  const email    = authEmailInp.value.trim();
+  const password = authPassInp.value;
+  try {
+    if (_authMode === 'signin') {
+      await auth.signInWithEmail(email, password);
+      authModal.classList.add('hidden');
+      displayInfo.textContent = 'SIGNED IN';
+    } else {
+      await auth.signUpWithEmail(email, password);
+      authNote.textContent = 'CHECK YOUR EMAIL TO CONFIRM';
+    }
+  } catch (err) {
+    authError.textContent = err.message.toUpperCase().slice(0, 50);
+  }
+});
+
+// ── Cloud modal ────────────────────────────────────────────────────────────────
+
+async function _openCloudModal() {
+  if (!auth.isLoggedIn) { authModal.classList.remove('hidden'); return; }
+  cloudModal.classList.remove('hidden');
+  _refreshCloudProjects();
+}
+
+cloudClose.addEventListener('click', () => cloudModal.classList.add('hidden'));
+cloudModal.addEventListener('click', (e) => { if (e.target === cloudModal) cloudModal.classList.add('hidden'); });
+
+// Cloud tab switch
+cloudTabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    cloudTabs.forEach(t => t.classList.toggle('active', t === tab));
+    cloudProjectsPanel.classList.toggle('hidden', tab.dataset.tab !== 'projects');
+    cloudSamplesPanel.classList.toggle( 'hidden', tab.dataset.tab !== 'samples');
+    if (tab.dataset.tab === 'samples') _refreshCloudSamples();
+  });
+});
+
+// Cloud button (in project controls)
+btnCloud.addEventListener('click', async () => {
+  engine.init();
+  await _ensureSupabase();
+  if (!auth.isLoggedIn) {
+    authModal.classList.remove('hidden');
+  } else {
+    _openCloudModal();
+  }
+});
+
+// Sign out
+btnSignout.addEventListener('click', async () => {
+  await auth.signOut();
+  cloudModal.classList.add('hidden');
+  _syncAuthUI();
+  displayInfo.textContent = 'SIGNED OUT';
+});
+
+// Save current project to cloud
+btnCloudSave.addEventListener('click', async () => {
+  cloudSaveStatus.textContent = 'SAVING…';
+  try {
+    const name = prompt('Project name:', 'My Beat') || 'Untitled';
+    const json = await project.toJSON(name);
+    await cloud.saveProject(name, json);
+    cloudSaveStatus.textContent = 'SAVED ✓';
+    displayInfo.textContent = 'CLOUD SAVED';
+    _refreshCloudProjects();
+    setTimeout(() => cloudSaveStatus.textContent = '', 3000);
+  } catch (err) {
+    cloudSaveStatus.textContent = err.message.slice(0, 30);
+  }
+});
+
+// Refresh projects list
+async function _refreshCloudProjects() {
+  cloudProjectsList.innerHTML = '<span class="cloud-empty">Loading…</span>';
+  try {
+    const projects = await cloud.listProjects();
+    if (!projects.length) {
+      cloudProjectsList.innerHTML = '<span class="cloud-empty">No projects yet — save one above.</span>';
+      return;
+    }
+    cloudProjectsList.innerHTML = '';
+    for (const p of projects) {
+      const date   = new Date(p.updated_at).toLocaleDateString();
+      const sizeKB = p.size_bytes ? `${Math.round(p.size_bytes / 1024)}KB` : '';
+      const row    = document.createElement('div');
+      row.className = 'cloud-row';
+      row.innerHTML = `
+        <span class="cloud-row-name" title="${p.name}">${p.name}</span>
+        <span class="cloud-row-meta">${date} ${sizeKB}</span>
+        <div class="cloud-row-actions">
+          <button class="cloud-row-btn load" data-id="${p.id}">LOAD</button>
+          <button class="cloud-row-btn delete" data-id="${p.id}" title="Delete">✕</button>
+        </div>
+      `;
+      row.querySelector('.load').addEventListener('click', async () => {
+        cloudSaveStatus.textContent = 'LOADING…';
+        try {
+          const data = await cloud.loadProject(p.id);
+          await project.loadFromData(data, { onPadLoaded: (i) => drawWaveform(i) });
+          selectPad(0); updateStepGrid(); renderSongChain();
+          displayInfo.textContent = p.name.toUpperCase().slice(0, 8);
+          cloudModal.classList.add('hidden');
+          cloudSaveStatus.textContent = '';
+        } catch (e) { cloudSaveStatus.textContent = e.message.slice(0, 30); }
+      });
+      row.querySelector('.delete').addEventListener('click', async () => {
+        if (!confirm(`Delete "${p.name}"?`)) return;
+        await cloud.deleteProject(p.id);
+        _refreshCloudProjects();
+      });
+      cloudProjectsList.appendChild(row);
+    }
+  } catch (err) {
+    cloudProjectsList.innerHTML = `<span class="cloud-empty">${err.message}</span>`;
+  }
+}
+
+// Refresh samples list
+async function _refreshCloudSamples() {
+  cloudSamplesList.innerHTML = '<span class="cloud-empty">Loading…</span>';
+  uploadPadNum.textContent   = (activePad ?? 0) + 1;
+  try {
+    const samples = await cloud.listSamples();
+    if (!samples.length) {
+      cloudSamplesList.innerHTML = '<span class="cloud-empty">No samples yet — upload one above.</span>';
+      return;
+    }
+    cloudSamplesList.innerHTML = '';
+    for (const s of samples) {
+      const dur = s.duration_s ? `${s.duration_s.toFixed(2)}s` : '';
+      const row = document.createElement('div');
+      row.className = 'cloud-row';
+      row.innerHTML = `
+        <span class="cloud-row-name" title="${s.name}">${s.name}</span>
+        <span class="cloud-row-meta">${dur}</span>
+        <div class="cloud-row-actions">
+          <button class="cloud-row-btn load" data-path="${s.storage_path}" data-name="${s.name}">→ PAD</button>
+          <button class="cloud-row-btn delete" data-id="${s.id}" title="Delete">✕</button>
+        </div>
+      `;
+      row.querySelector('.load').addEventListener('click', async () => {
+        try {
+          const buf = await cloud.downloadSample(s.storage_path);
+          const target = activePad ?? 0;
+          bank.setSample(target, buf, s.name);
+          selectPad(target);
+          displayInfo.textContent = s.name.toUpperCase().slice(0, 8);
+          cloudModal.classList.add('hidden');
+        } catch (e) { cloudUploadStatus.textContent = e.message.slice(0, 30); }
+      });
+      row.querySelector('.delete').addEventListener('click', async () => {
+        if (!confirm(`Delete "${s.name}"?`)) return;
+        await cloud.deleteSample(s.id);
+        _refreshCloudSamples();
+      });
+      cloudSamplesList.appendChild(row);
+    }
+  } catch (err) {
+    cloudSamplesList.innerHTML = `<span class="cloud-empty">${err.message}</span>`;
+  }
+}
+
+// Upload current pad's sample to cloud
+btnCloudUpSample.addEventListener('click', async () => {
+  const target = activePad ?? 0;
+  const slot   = bank.getSample(target);
+  if (!slot?.buffer) { cloudUploadStatus.textContent = 'NO SAMPLE ON PAD'; return; }
+  cloudUploadStatus.textContent = 'UPLOADING…';
+  try {
+    await cloud.uploadSample(slot.name || `PAD ${target + 1}`, slot.buffer);
+    cloudUploadStatus.textContent = 'UPLOADED ✓';
+    _refreshCloudSamples();
+    setTimeout(() => cloudUploadStatus.textContent = '', 3000);
+  } catch (e) { cloudUploadStatus.textContent = e.message.slice(0, 30); }
+});
+
+// Boot Supabase in the background (no blocking)
+_ensureSupabase().then(() => { if (auth.isLoggedIn) _syncAuthUI(); });
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 displayBPM.textContent = String(seq.bpm).padStart(3, '0');

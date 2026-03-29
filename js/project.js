@@ -73,6 +73,60 @@ export class ProjectManager {
       `${projectName.replace(/[^a-z0-9_\-]/gi, '_')}.koweb.json`,
       'application/json'
     );
+    return json;  // also return for cloud upload
+  }
+
+  /** Build project JSON string without downloading — for cloud save */
+  async toJSON(projectName = 'project') {
+    const pads = [];
+    for (let i = 0; i < 12; i++) {
+      const slot = this.bank.getSample(i);
+      if (slot?.buffer) {
+        pads.push({
+          name:       slot.name,
+          volume:     slot.volume,
+          pitch:      slot.pitch,
+          sendLevels: { ...slot.sendLevels },
+          trimStart:  slot.trimStart ?? 0,
+          trimEnd:    slot.trimEnd   ?? 1,
+          muted:      this.bank.isMuted(i),
+          soloed:     this.bank.isSoloed(i),
+          reverse:    slot.reverse   ?? false,
+          muteGroup:  slot.muteGroup ?? 0,
+          audio:      audioBufferToBase64(slot.buffer),
+        });
+      } else { pads.push(null); }
+    }
+    return JSON.stringify({
+      version:         FORMAT_VERSION,
+      name:            projectName,
+      savedAt:         new Date().toISOString(),
+      bpm:             this.seq.bpm,
+      stepsPerPattern: this.seq.stepsPerPattern,
+      swing:           this.seq.swing,
+      activeGroup:     this.seq.activeGroup,
+      groups:          this.seq.groups.map(g =>
+        g.map(pad => pad.map(step => ({
+          active:      step.active,
+          volume:      step.volume,
+          pitch:       step.pitch,
+          sendLevels:  { ...step.sendLevels },
+          probability: step.probability ?? 1,
+        })))
+      ),
+      songChain: this.seq.songChain.slice(),
+      pads,
+    });
+  }
+
+  /** Load from a plain JS object (already parsed JSON) — used by cloud loader */
+  async loadFromData(data, { onPadLoaded } = {}) {
+    const fakeFile = new File(
+      [JSON.stringify(data)],
+      'cloud.koweb.json',
+      { type: 'application/json' },
+    );
+    return this.load(fakeFile, { onPadLoaded });
   }
 
   // ─── Load ──────────────────────────────────────────────────────────────────
