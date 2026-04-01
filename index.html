@@ -8,286 +8,387 @@
 </head>
 <body>
 
-<div class="device">
-
-  <!-- Top port strip -->
-  <div class="device-ports">
-    <span>OUTPUT</span><span>INPUT</span><span>SYNC</span><span>MIDI</span><span>USB-C</span><span>POWER</span>
-  </div>
-
-  <!-- Brand -->
-  <div class="brand">
-    <div class="brand-left">
-      <span class="brand-ko">KO·WEB</span>
-      <span class="brand-jp">サンプラー</span>
+<!-- ── App bar ──────────────────────────────────────────────────────────────── -->
+<div class="app-bar">
+  <div class="app-bar-left">
+    <div class="ep-logo">EP</div>
+    <div class="app-title-block">
+      <div class="app-title-line">SAMPLE</div>
+      <div class="app-title-line">TOOL</div>
     </div>
-    <span class="brand-spec">128 MB SAMPLE COMPOSER</span>
+    <span class="app-version">V 1.1.0</span>
+  </div>
+  <div class="app-bar-right">
     <button id="auth-btn" class="auth-btn" title="Sign in for cloud save">SIGN IN</button>
   </div>
+</div>
 
-  <!-- Display row -->
-  <div class="display-row">
-    <div class="display">
-      <div class="disp-top">
-        <div>
-          <div class="disp-label">BPM</div>
-          <div id="disp-bpm">120</div>
+<!-- ── Main layout: device + context panel ─────────────────────────────────── -->
+<div class="main-layout">
+
+  <!-- ═══ DEVICE ═══════════════════════════════════════════════════════════ -->
+  <div class="device">
+
+    <!-- Brand -->
+    <div class="brand">
+      <div class="brand-left">
+        <span class="brand-ko">K.O. II</span>
+        <span class="brand-jp">サンプラー</span>
+      </div>
+      <div class="speaker-grille"></div>
+    </div>
+
+    <!-- Sound Edit display -->
+    <div class="sound-edit-section">
+      <div class="sound-edit-header">
+        <span class="sound-edit-label">SOUND EDIT</span>
+        <div class="beat-dots">
+          <span class="beat-dot" data-beat="0"></span>
+          <span class="beat-dot" data-beat="1"></span>
+          <span class="beat-dot" data-beat="2"></span>
+          <span class="beat-dot" data-beat="3"></span>
         </div>
-        <div class="disp-center">
-          <div class="beat-dots">
-            <span class="beat-dot" data-beat="0"></span>
-            <span class="beat-dot" data-beat="1"></span>
-            <span class="beat-dot" data-beat="2"></span>
-            <span class="beat-dot" data-beat="3"></span>
+      </div>
+      <div class="waveform-wrap">
+        <span class="wf-edge">IN</span>
+        <canvas id="waveform" width="400" height="88"></canvas>
+        <span class="wf-edge">OUT</span>
+      </div>
+      <div class="sample-info-row">
+        <span class="si-group">A</span>
+        <span class="si-num" id="disp-pad">—</span>
+        <span class="si-name" id="pad-name">NO SAMPLE</span>
+        <span class="si-spacer"></span>
+        <span class="si-status" id="disp-info">STOP</span>
+        <span class="si-bpm" id="disp-bpm">120</span>
+        <span class="si-bpmlabel">BPM</span>
+      </div>
+    </div>
+
+    <!-- Device body: fader + pads + knobs -->
+    <div class="device-body">
+
+      <!-- Left: vertical volume fader -->
+      <div class="fader-col">
+        <input type="range" id="pad-volume" class="vert-fader"
+               min="0" max="1" step="0.01" value="1" title="Pad Volume" />
+        <span class="fader-label">VOL</span>
+        <span class="fader-val ctrl-val" id="pad-volume-val">100</span>
+      </div>
+
+      <!-- Pads area -->
+      <div class="pads-area">
+
+        <!-- Function row (mode tabs + slicer) -->
+        <div class="fn-row">
+          <span class="fn-spacer"></span>
+          <button class="fn-btn panel-tab-btn active" data-panel="library">SOUND</button>
+          <button class="fn-btn panel-tab-btn" data-panel="sound">EDIT</button>
+          <button class="fn-btn panel-tab-btn" data-panel="seq">SEQ</button>
+          <button class="fn-btn panel-tab-btn" data-panel="project">PROJ</button>
+          <button id="btn-slicer" class="fn-btn fn-accent">SLICE</button>
+        </div>
+
+        <!-- Row A -->
+        <div class="pad-row">
+          <button class="group-btn fn-btn active" data-group="0">A</button>
+          <div class="pad" data-index="0" data-key="a">
+            <span class="pad-num">1</span>
+            <span class="pad-label">A</span>
+            <span class="pad-key">A</span>
           </div>
-          <div id="disp-info">STOP</div>
+          <div class="pad" data-index="1" data-key="s">
+            <span class="pad-num">2</span>
+            <span class="pad-label">S</span>
+            <span class="pad-key">S</span>
+          </div>
+          <div class="pad" data-index="2" data-key="d">
+            <span class="pad-num">3</span>
+            <span class="pad-label">D</span>
+            <span class="pad-key">D</span>
+          </div>
+          <button id="btn-play"   class="action-pad btn">▶</button>
+          <button id="btn-record" class="action-pad btn action-rec">●</button>
         </div>
-        <div class="disp-right">
-          <div class="disp-label">PAD</div>
-          <div id="disp-pad">—</div>
+
+        <!-- Row B -->
+        <div class="pad-row">
+          <button class="group-btn fn-btn" data-group="1">B</button>
+          <div class="pad" data-index="3" data-key="f">
+            <span class="pad-num">4</span>
+            <span class="pad-label">F</span>
+            <span class="pad-key">F</span>
+          </div>
+          <div class="pad" data-index="4" data-key="g">
+            <span class="pad-num">5</span>
+            <span class="pad-label">G</span>
+            <span class="pad-key">G</span>
+          </div>
+          <div class="pad" data-index="5" data-key="h">
+            <span class="pad-num">6</span>
+            <span class="pad-label">H</span>
+            <span class="pad-key">H</span>
+          </div>
+          <button id="btn-stop"     class="action-pad btn active">■</button>
+          <button id="btn-resample" class="action-pad btn" title="Resample">⏺</button>
+        </div>
+
+        <!-- Row C -->
+        <div class="pad-row">
+          <button class="group-btn fn-btn" data-group="2">C</button>
+          <div class="pad" data-index="6" data-key="j">
+            <span class="pad-num">7</span>
+            <span class="pad-label">J</span>
+            <span class="pad-key">J</span>
+          </div>
+          <div class="pad" data-index="7" data-key="k">
+            <span class="pad-num">8</span>
+            <span class="pad-label">K</span>
+            <span class="pad-key">K</span>
+          </div>
+          <div class="pad" data-index="8" data-key="z">
+            <span class="pad-num">9</span>
+            <span class="pad-label">Z</span>
+            <span class="pad-key">Z</span>
+          </div>
+          <button id="btn-import"    class="action-pad btn">↑ LOAD</button>
+          <button id="btn-clear-pad" class="action-pad btn">✕ CLR</button>
+        </div>
+
+        <!-- Row D -->
+        <div class="pad-row">
+          <button class="group-btn fn-btn" data-group="3">D</button>
+          <div class="pad" data-index="9" data-key="x">
+            <span class="pad-num">10</span>
+            <span class="pad-label">X</span>
+            <span class="pad-key">X</span>
+          </div>
+          <div class="pad" data-index="10" data-key="c">
+            <span class="pad-num">11</span>
+            <span class="pad-label">C</span>
+            <span class="pad-key">C</span>
+          </div>
+          <div class="pad" data-index="11" data-key="v">
+            <span class="pad-num">12</span>
+            <span class="pad-label">V</span>
+            <span class="pad-key">V</span>
+          </div>
+          <!-- Decorative action pads for row D (no JS interaction needed) -->
+          <div class="action-pad action-dot-pad"><span class="dot-indicator"></span></div>
+          <div class="action-pad action-dot-pad action-accent-static"><span class="dot-indicator"></span></div>
+        </div>
+
+      </div><!-- /.pads-area -->
+
+      <!-- Right: IN / OUT knobs -->
+      <div class="inout-col">
+        <div class="inout-knob-wrap">
+          <div class="circle-knob"></div>
+          <span class="inout-label">IN</span>
+        </div>
+        <div class="inout-knob-wrap">
+          <div class="circle-knob"></div>
+          <span class="inout-label">OUT</span>
         </div>
       </div>
-    </div>
-    <div class="waveform-wrap">
-      <canvas id="waveform" width="240" height="80"></canvas>
-      <div class="waveform-label" id="pad-name">NO SAMPLE</div>
-    </div>
-  </div>
 
-  <!-- Pads 4×3 -->
-  <div class="pads-section">
-    <div class="pad" data-index="0"  data-key="a"><span class="pad-num">1</span><span class="pad-key">A</span><span class="pad-label">A</span></div>
-    <div class="pad" data-index="1"  data-key="s"><span class="pad-num">2</span><span class="pad-key">S</span><span class="pad-label">S</span></div>
-    <div class="pad" data-index="2"  data-key="d"><span class="pad-num">3</span><span class="pad-key">D</span><span class="pad-label">D</span></div>
-    <div class="pad" data-index="3"  data-key="f"><span class="pad-num">4</span><span class="pad-key">F</span><span class="pad-label">F</span></div>
-    <div class="pad" data-index="4"  data-key="g"><span class="pad-num">5</span><span class="pad-key">G</span><span class="pad-label">G</span></div>
-    <div class="pad" data-index="5"  data-key="h"><span class="pad-num">6</span><span class="pad-key">H</span><span class="pad-label">H</span></div>
-    <div class="pad" data-index="6"  data-key="j"><span class="pad-num">7</span><span class="pad-key">J</span><span class="pad-label">J</span></div>
-    <div class="pad" data-index="7"  data-key="k"><span class="pad-num">8</span><span class="pad-key">K</span><span class="pad-label">K</span></div>
-    <div class="pad" data-index="8"  data-key="z"><span class="pad-num">9</span><span class="pad-key">Z</span><span class="pad-label">Z</span></div>
-    <div class="pad" data-index="9"  data-key="x"><span class="pad-num">10</span><span class="pad-key">X</span><span class="pad-label">X</span></div>
-    <div class="pad" data-index="10" data-key="c"><span class="pad-num">11</span><span class="pad-key">C</span><span class="pad-label">C</span></div>
-    <div class="pad" data-index="11" data-key="v"><span class="pad-num">12</span><span class="pad-key">V</span><span class="pad-label">V</span></div>
-  </div>
+    </div><!-- /.device-body -->
 
-  <div class="divider"></div>
+  </div><!-- /.device -->
 
-  <!-- Step sequencer -->
-  <div class="seq-section">
-    <div class="seq-header">
-      <div class="seq-label">Step Sequencer</div>
-      <div class="seq-controls">
-        <div class="step-len-btns">
-          <button class="step-len-btn active" data-len="8">8</button>
-          <button class="step-len-btn" data-len="16">16</button>
+  <!-- ═══ RIGHT CONTEXT PANEL ══════════════════════════════════════════════ -->
+  <div class="panel-right">
+
+    <!-- ── LIBRARY panel (default) ──────────────────────────────────────── -->
+    <div class="panel-content active" id="panel-library">
+      <div class="panel-header">
+        <span class="panel-title">SAMPLE LIBRARY</span>
+        <div class="panel-header-right">
+          <span class="lib-dot">●</span>
+          <span class="lib-size">— MB</span>
+          <span class="lib-count" id="lib-count">0</span>
+          <button id="btn-cloud" class="hdr-btn btn-cloud" title="Cloud library">☁</button>
         </div>
-        <button id="btn-clear" class="btn btn-sm">CLR</button>
       </div>
-    </div>
-    <div class="beat-numbers">
-      <span>1</span><span></span><span></span><span></span>
-      <span>2</span><span></span><span></span><span></span>
-      <span>3</span><span></span><span></span><span></span>
-      <span>4</span><span></span><span></span><span></span>
-    </div>
-    <div class="step-grid">
-      <button class="step-btn" data-step="0"></button>
-      <button class="step-btn" data-step="1"></button>
-      <button class="step-btn" data-step="2"></button>
-      <button class="step-btn" data-step="3"></button>
-      <button class="step-btn" data-step="4"></button>
-      <button class="step-btn" data-step="5"></button>
-      <button class="step-btn" data-step="6"></button>
-      <button class="step-btn" data-step="7"></button>
-      <button class="step-btn" data-step="8"></button>
-      <button class="step-btn" data-step="9"></button>
-      <button class="step-btn" data-step="10"></button>
-      <button class="step-btn" data-step="11"></button>
-      <button class="step-btn" data-step="12"></button>
-      <button class="step-btn" data-step="13"></button>
-      <button class="step-btn" data-step="14"></button>
-      <button class="step-btn" data-step="15"></button>
-    </div>
-  </div>
 
-  <div class="divider"></div>
+      <div class="library-body">
+        <!-- Sample list -->
+        <div class="sample-list" id="sample-list">
+          <div class="sample-list-empty">
+            <span>Drag audio files onto pads to load,</span>
+            <span>or press ↑ LOAD in row C.</span>
+          </div>
+        </div>
 
-  <!-- Bottom controls -->
-  <div class="bottom-controls">
+        <!-- Category sidebar -->
+        <div class="cat-sidebar">
+          <button class="cat-btn active" data-cat="all">ALL<br><span class="cat-range">1–12</span></button>
+          <button class="cat-btn" data-cat="0">GRP A<br><span class="cat-range">1–3</span></button>
+          <button class="cat-btn" data-cat="1">GRP B<br><span class="cat-range">4–6</span></button>
+          <button class="cat-btn" data-cat="2">GRP C<br><span class="cat-range">7–9</span></button>
+          <button class="cat-btn" data-cat="3">GRP D<br><span class="cat-range">10–12</span></button>
+        </div>
+      </div>
 
-    <!-- Transport -->
-    <div class="control-block">
-      <div class="block-label">Transport</div>
-      <div class="transport-btns">
-        <button id="btn-play"   class="btn">▶ PLAY</button>
-        <button id="btn-stop"   class="btn active">■ STOP</button>
-        <button id="btn-record" class="btn">● REC</button>
-        <button id="btn-resample" class="btn" title="Record master output to pad">⏺ RES</button>
+      <div class="panel-footer">
+        <select id="kit-select" class="kit-select-inline">
+          <option value="">— Load Kit —</option>
+          <option value="808 Classic">808 Classic</option>
+          <option value="Lo-Fi">Lo-Fi</option>
+          <option value="Electronic">Electronic</option>
+        </select>
+        <span class="lib-hint">BACKUP &amp; RESTORE</span>
       </div>
     </div>
 
-    <!-- BPM + Tap + Swing -->
-    <div class="control-block">
-      <div class="block-label">BPM</div>
-      <div class="bpm-row">
-        <input type="range" id="bpm-slider" min="40" max="300" value="120" />
-        <span id="bpm-value">120</span>
-        <button id="btn-tap" class="btn btn-sm">TAP</button>
+    <!-- ── SOUND panel (pad controls) ───────────────────────────────────── -->
+    <div class="panel-content hidden" id="panel-sound">
+      <div class="panel-header">
+        <span class="panel-title" id="pad-controls-title">SOUND — PAD 1</span>
+        <div class="pad-mute-solo">
+          <button id="pad-mute-btn"    class="btn btn-sm pad-state-btn" title="Mute">M</button>
+          <button id="pad-solo-btn"    class="btn btn-sm pad-state-btn" title="Solo">S</button>
+          <button id="pad-reverse-btn" class="btn btn-sm pad-state-btn" title="Reverse">REV</button>
+        </div>
+      </div>
+      <div class="pad-controls-grid">
+        <div class="pad-ctrl">
+          <span class="ctrl-name">PITCH</span>
+          <input type="range" class="ctrl-slider" id="pad-pitch" min="0.25" max="4" step="0.01" value="1" />
+          <span class="ctrl-val" id="pad-pitch-val">1.00×</span>
+        </div>
+        <div class="pad-ctrl">
+          <span class="ctrl-name">REVERB</span>
+          <input type="range" class="send-knob ctrl-slider" data-send="reverb" min="0" max="1" step="0.01" value="0" />
+          <span class="knob-val ctrl-val">0</span>
+        </div>
+        <div class="pad-ctrl">
+          <span class="ctrl-name">DELAY</span>
+          <input type="range" class="send-knob ctrl-slider" data-send="delay" min="0" max="1" step="0.01" value="0" />
+          <span class="knob-val ctrl-val">0</span>
+        </div>
+        <div class="pad-ctrl">
+          <span class="ctrl-name">FILTER</span>
+          <input type="range" class="send-knob ctrl-slider" data-send="filter" min="0" max="1" step="0.01" value="0" />
+          <span class="knob-val ctrl-val">0</span>
+        </div>
+        <div class="pad-ctrl">
+          <span class="ctrl-name">DRIVE</span>
+          <input type="range" class="send-knob ctrl-slider" data-send="distortion" min="0" max="1" step="0.01" value="0" />
+          <span class="knob-val ctrl-val">0</span>
+        </div>
+      </div>
+      <div class="mute-group-row">
+        <span class="block-sublabel">MUTE GROUP</span>
+        <div class="mute-group-btns">
+          <button class="mg-btn active" data-mg="0">—</button>
+          <button class="mg-btn" data-mg="1">1</button>
+          <button class="mg-btn" data-mg="2">2</button>
+          <button class="mg-btn" data-mg="3">3</button>
+          <button class="mg-btn" data-mg="4">4</button>
+        </div>
+        <span class="mg-hint">hi-hat tip: open+closed = same group</span>
+      </div>
+    </div>
+
+    <!-- ── SEQ panel ─────────────────────────────────────────────────────── -->
+    <div class="panel-content hidden" id="panel-seq">
+      <div class="panel-header">
+        <span class="panel-title">SEQUENCER</span>
+        <div class="seq-bpm-compact">
+          <input type="range" id="bpm-slider" min="40" max="300" value="120" />
+          <span id="bpm-value" class="bpm-val-sm">120</span>
+          <button id="btn-tap" class="btn btn-sm">TAP</button>
+        </div>
       </div>
       <div class="swing-row">
         <span class="block-sublabel">SWING</span>
         <input type="range" id="swing-slider" min="0" max="0.5" step="0.01" value="0" />
         <span id="swing-value">0%</span>
       </div>
-    </div>
-
-    <!-- Groups -->
-    <div class="control-block">
-      <div class="block-label">Group</div>
-      <div class="group-btns">
-        <button class="group-btn" data-group="0">A</button>
-        <button class="group-btn" data-group="1">B</button>
-        <button class="group-btn" data-group="2">C</button>
-        <button class="group-btn" data-group="3">D</button>
+      <div class="seq-section">
+        <div class="seq-header">
+          <div class="seq-label">PATTERN</div>
+          <div class="seq-controls">
+            <div class="step-len-btns">
+              <button class="step-len-btn active" data-len="8">8</button>
+              <button class="step-len-btn" data-len="16">16</button>
+            </div>
+            <button id="btn-clear" class="btn btn-sm">CLR</button>
+          </div>
+        </div>
+        <div class="beat-numbers">
+          <span>1</span><span></span><span></span><span></span>
+          <span>2</span><span></span><span></span><span></span>
+          <span>3</span><span></span><span></span><span></span>
+          <span>4</span><span></span><span></span><span></span>
+        </div>
+        <div class="step-grid">
+          <button class="step-btn" data-step="0"></button>
+          <button class="step-btn" data-step="1"></button>
+          <button class="step-btn" data-step="2"></button>
+          <button class="step-btn" data-step="3"></button>
+          <button class="step-btn" data-step="4"></button>
+          <button class="step-btn" data-step="5"></button>
+          <button class="step-btn" data-step="6"></button>
+          <button class="step-btn" data-step="7"></button>
+          <button class="step-btn" data-step="8"></button>
+          <button class="step-btn" data-step="9"></button>
+          <button class="step-btn" data-step="10"></button>
+          <button class="step-btn" data-step="11"></button>
+          <button class="step-btn" data-step="12"></button>
+          <button class="step-btn" data-step="13"></button>
+          <button class="step-btn" data-step="14"></button>
+          <button class="step-btn" data-step="15"></button>
+        </div>
       </div>
-    </div>
-
-    <!-- Sample + Kit -->
-    <div class="control-block">
-      <div class="block-label">Sample</div>
-      <div class="transport-btns">
-        <button id="btn-import" class="btn">↑ LOAD</button>
-        <button id="btn-clear-pad" class="btn">✕ CLR</button>
-        <button id="btn-slicer" class="btn btn-highlight">✂ SLICE</button>
+      <div class="song-section">
+        <div class="song-header">
+          <span class="seq-label">SONG CHAIN</span>
+          <div class="song-header-btns">
+            <button id="btn-song-toggle" class="btn btn-sm">OFF</button>
+            <button id="btn-song-add"    class="btn btn-sm">+ ADD</button>
+            <button id="btn-song-clear"  class="btn btn-sm">CLR</button>
+          </div>
+        </div>
+        <div id="song-chain" class="song-chain">
+          <span class="song-empty">add groups to chain then toggle ON</span>
+        </div>
       </div>
-      <div class="kit-row">
-        <span class="block-sublabel">KIT</span>
-        <select id="kit-select">
-          <option value="">— Load Kit —</option>
-          <option value="808 Classic">808 Classic</option>
-          <option value="Lo-Fi">Lo-Fi</option>
-          <option value="Electronic">Electronic</option>
-        </select>
-      </div>
-    </div>
-
-    <!-- Project -->
-    <div class="control-block">
-      <div class="block-label">Project</div>
-      <div class="transport-btns">
-        <button id="btn-save" class="btn">↓ SAVE</button>
-        <button id="btn-load-proj" class="btn">↑ OPEN</button>
-        <button id="btn-export-wav" class="btn btn-highlight">⊙ WAV</button>
-        <button id="btn-cloud" class="btn btn-cloud" title="Cloud save/load (sign in required)">☁</button>
-      </div>
-    </div>
-
-    <!-- MIDI -->
-    <div class="control-block">
-      <div class="block-label">MIDI</div>
       <div class="midi-row">
+        <span class="block-sublabel">MIDI</span>
         <button id="btn-midi" class="btn btn-sm">CONNECT</button>
         <span id="midi-status" class="midi-status">—</span>
       </div>
     </div>
 
-  </div>
-
-  <div class="divider"></div>
-
-  <!-- Pad controls (pitch + volume + sends) -->
-  <div class="pad-controls-section">
-    <div class="pad-controls-header">
-      <div class="pad-controls-label" id="pad-controls-title">PAD 1 — controls</div>
-      <div class="pad-mute-solo">
-        <button id="pad-mute-btn"   class="btn btn-sm pad-state-btn" title="Mute this pad">M</button>
-        <button id="pad-solo-btn"   class="btn btn-sm pad-state-btn" title="Solo this pad">S</button>
-        <button id="pad-reverse-btn" class="btn btn-sm pad-state-btn" title="Reverse playback">REV</button>
+    <!-- ── PROJECT panel ─────────────────────────────────────────────────── -->
+    <div class="panel-content hidden" id="panel-project">
+      <div class="panel-header">
+        <span class="panel-title">PROJECT</span>
+      </div>
+      <div class="project-actions">
+        <button id="btn-save"       class="project-btn btn">↓ SAVE PROJECT</button>
+        <button id="btn-load-proj"  class="project-btn btn">↑ OPEN PROJECT</button>
+        <button id="btn-export-wav" class="project-btn btn accent-btn">⊙ EXPORT WAV</button>
       </div>
     </div>
-    <div class="pad-controls-grid">
 
-      <div class="pad-ctrl">
-        <span class="ctrl-name">Volume</span>
-        <input type="range" class="ctrl-slider" id="pad-volume" min="0" max="1" step="0.01" value="1" />
-        <span class="ctrl-val" id="pad-volume-val">100</span>
-      </div>
+  </div><!-- /.panel-right -->
 
-      <div class="pad-ctrl">
-        <span class="ctrl-name">Pitch</span>
-        <input type="range" class="ctrl-slider" id="pad-pitch" min="0.25" max="4" step="0.01" value="1" />
-        <span class="ctrl-val" id="pad-pitch-val">1.00×</span>
-      </div>
+</div><!-- /.main-layout -->
 
-      <div class="pad-ctrl">
-        <span class="ctrl-name">Reverb</span>
-        <input type="range" class="send-knob ctrl-slider" data-send="reverb" min="0" max="1" step="0.01" value="0" />
-        <span class="knob-val ctrl-val">0</span>
-      </div>
-
-      <div class="pad-ctrl">
-        <span class="ctrl-name">Delay</span>
-        <input type="range" class="send-knob ctrl-slider" data-send="delay" min="0" max="1" step="0.01" value="0" />
-        <span class="knob-val ctrl-val">0</span>
-      </div>
-
-      <div class="pad-ctrl">
-        <span class="ctrl-name">Filter</span>
-        <input type="range" class="send-knob ctrl-slider" data-send="filter" min="0" max="1" step="0.01" value="0" />
-        <span class="knob-val ctrl-val">0</span>
-      </div>
-
-      <div class="pad-ctrl">
-        <span class="ctrl-name">Drive</span>
-        <input type="range" class="send-knob ctrl-slider" data-send="distortion" min="0" max="1" step="0.01" value="0" />
-        <span class="knob-val ctrl-val">0</span>
-      </div>
-
-    </div>
-
-    <!-- Mute group row -->
-    <div class="mute-group-row">
-      <span class="block-sublabel">MUTE&nbsp;GROUP</span>
-      <div class="mute-group-btns">
-        <button class="mg-btn active" data-mg="0">—</button>
-        <button class="mg-btn" data-mg="1">1</button>
-        <button class="mg-btn" data-mg="2">2</button>
-        <button class="mg-btn" data-mg="3">3</button>
-        <button class="mg-btn" data-mg="4">4</button>
-      </div>
-      <span class="mg-hint">hi-hat tip: open+closed = same group</span>
-    </div>
-
-  </div>
-
-  <div class="divider"></div>
-
-  <!-- Song mode chain -->
-  <div class="song-section">
-    <div class="song-header">
-      <span class="seq-label">Song Chain</span>
-      <div class="song-header-btns">
-        <button id="btn-song-toggle" class="btn btn-sm">OFF</button>
-        <button id="btn-song-add"    class="btn btn-sm">+ ADD</button>
-        <button id="btn-song-clear"  class="btn btn-sm">CLR</button>
-      </div>
-    </div>
-    <div id="song-chain" class="song-chain">
-      <span class="song-empty">add groups to chain then toggle ON</span>
-    </div>
-  </div>
-
-  <!-- Footer hint -->
+<!-- ── App footer ──────────────────────────────────────────────────────────── -->
+<div class="app-footer">
+  <button class="help-btn btn btn-sm">HELP</button>
   <div class="footer-hint">
-    keys: A–F · G–K · Z–V &nbsp;|&nbsp; space: play/stop &nbsp;|&nbsp; drag audio onto pads &nbsp;|&nbsp; hold REC + tap pad = mic record &nbsp;|&nbsp; shift+click step = cycle probability
+    A–V: pads &nbsp;·&nbsp; SPACE: play/stop &nbsp;·&nbsp; T: tap tempo &nbsp;·&nbsp; drag audio onto pads &nbsp;·&nbsp; SHIFT+click step = probability
   </div>
-
-  <!-- Speaker grille (decorative) -->
-  <div class="speaker-grille"></div>
-
 </div>
 
-<!-- ── Slicer overlay ──────────────────────────────────────────────────────── -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- SLICER OVERLAY (unchanged — full-screen modal)                            -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
 <div class="slicer-overlay hidden" id="slicer-overlay">
   <div class="slicer-panel">
 
@@ -302,7 +403,6 @@
       </div>
     </div>
 
-    <!-- Waveform canvas -->
     <div class="slicer-canvas-wrap"
          id="slicer-drop-zone"
          ondragover="event.preventDefault()"
@@ -311,7 +411,6 @@
       <canvas id="slicer-canvas" height="130"></canvas>
     </div>
 
-    <!-- Time readout + zoom -->
     <div class="slicer-info-row">
       <div class="slicer-times">
         <div class="slicer-time-block">
@@ -339,7 +438,6 @@
       </div>
     </div>
 
-    <!-- Mode + transient detection -->
     <div class="slicer-mode-row">
       <div class="slicer-mode-btns">
         <button id="slicer-mode-single" class="btn btn-sm active">SINGLE</button>
@@ -348,13 +446,12 @@
       <div class="slicer-detect-controls" id="slicer-detect-controls">
         <span class="slicer-time-label">SENS</span>
         <input type="range" id="slicer-sensitivity" min="0.05" max="0.95" step="0.05" value="0.3" />
-        <button id="slicer-detect" class="btn btn-sm">⚡ AUTO</button>
+        <button id="slicer-detect"       class="btn btn-sm">⚡ AUTO</button>
         <button id="slicer-clear-markers" class="btn btn-sm">✕ CLR</button>
         <span id="slicer-marker-count" class="slicer-slice-count">0 SLICES</span>
       </div>
     </div>
 
-    <!-- Playback controls -->
     <div class="slicer-transport">
       <button class="btn" id="slicer-play">▶ PREVIEW</button>
       <button class="btn" id="slicer-loop">⟳ LOOP</button>
@@ -362,7 +459,6 @@
       <span class="slicer-hint" id="slicer-hint">drag handles to trim · drag region to move</span>
     </div>
 
-    <!-- Pad assignment grid -->
     <div class="slicer-pads-section">
       <div class="slicer-pads-label">
         <span>SEND TO PAD</span>
@@ -387,45 +483,35 @@
   </div>
 </div>
 
-<!-- ── Auth Modal ─────────────────────────────────────────────────────────── -->
+<!-- ── Auth Modal ──────────────────────────────────────────────────────────── -->
 <div class="modal-overlay hidden" id="auth-modal" role="dialog" aria-modal="true">
   <div class="modal-panel auth-panel">
-
     <div class="modal-header">
       <span id="auth-modal-title">SIGN IN</span>
       <button class="modal-close" id="auth-close" aria-label="Close">✕</button>
     </div>
-
-    <!-- Tab toggle -->
     <div class="auth-tabs">
       <button class="auth-tab active" data-tab="signin">SIGN IN</button>
       <button class="auth-tab" data-tab="register">REGISTER</button>
     </div>
-
-    <!-- Google -->
     <button id="btn-google" class="btn auth-google-btn">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-right:6px"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
       Continue with Google
     </button>
-
     <div class="auth-divider"><span>OR</span></div>
-
-    <!-- Email / password form -->
     <form class="auth-form" id="auth-form" autocomplete="on">
       <input type="email"    id="auth-email"    class="auth-input" placeholder="email address" autocomplete="email" required />
       <input type="password" id="auth-password" class="auth-input" placeholder="password"      autocomplete="current-password" minlength="6" required />
       <button type="submit" id="btn-auth-submit" class="btn">SIGN IN</button>
     </form>
-
     <p class="auth-error" id="auth-error" aria-live="polite"></p>
-    <p class="auth-note" id="auth-note"></p>
+    <p class="auth-note"  id="auth-note"></p>
   </div>
 </div>
 
 <!-- ── Cloud Modal ─────────────────────────────────────────────────────────── -->
 <div class="modal-overlay hidden" id="cloud-modal" role="dialog" aria-modal="true">
   <div class="modal-panel cloud-panel">
-
     <div class="modal-header">
       <span>☁ CLOUD LIBRARY</span>
       <div class="cloud-header-right">
@@ -434,14 +520,10 @@
         <button class="modal-close" id="cloud-close" aria-label="Close">✕</button>
       </div>
     </div>
-
-    <!-- Tabs -->
     <div class="cloud-tabs">
       <button class="cloud-tab active" data-tab="projects">MY PROJECTS</button>
       <button class="cloud-tab" data-tab="samples">MY SAMPLES</button>
     </div>
-
-    <!-- Projects tab -->
     <div class="cloud-tab-panel" id="cloud-projects-panel">
       <div class="cloud-actions">
         <button id="btn-cloud-save" class="btn">☁ SAVE CURRENT</button>
@@ -451,8 +533,6 @@
         <span class="cloud-empty">Loading projects…</span>
       </div>
     </div>
-
-    <!-- Samples tab -->
     <div class="cloud-tab-panel hidden" id="cloud-samples-panel">
       <div class="cloud-actions">
         <button id="btn-cloud-upload-sample" class="btn">↑ UPLOAD PAD <span id="upload-pad-num">1</span></button>
@@ -462,13 +542,14 @@
         <span class="cloud-empty">Loading samples…</span>
       </div>
     </div>
-
   </div>
 </div>
 
-<input type="file" id="file-input"          accept="audio/*"              style="display:none" />
-<input type="file" id="slicer-file-input"  accept="audio/*"              style="display:none" />
-<input type="file" id="project-file-input" accept=".json,.koweb.json"    style="display:none" />
+<!-- Hidden file inputs -->
+<input type="file" id="file-input"          accept="audio/*"           style="display:none" />
+<input type="file" id="slicer-file-input"   accept="audio/*"           style="display:none" />
+<input type="file" id="project-file-input"  accept=".json,.koweb.json" style="display:none" />
+
 <script type="module" src="js/app.js"></script>
 </body>
 </html>

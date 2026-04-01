@@ -1248,6 +1248,53 @@ btnCloudUpSample.addEventListener('click', async () => {
 // Boot Supabase in the background (no blocking)
 _ensureSupabase().then(() => { if (auth.isLoggedIn) _syncAuthUI(); });
 
+// ─── Panel switching ──────────────────────────────────────────────────────────
+document.querySelectorAll('.panel-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const panel = btn.dataset.panel;
+    document.querySelectorAll('.panel-content').forEach(p => {
+      p.classList.toggle('hidden', p.id !== 'panel-' + panel);
+      p.classList.toggle('active', p.id === 'panel-' + panel);
+    });
+    document.querySelectorAll('.panel-tab-btn').forEach(b =>
+      b.classList.toggle('active', b === btn));
+  });
+});
+
+// ─── Sample list (Library panel) ──────────────────────────────────────────────
+function refreshSampleList() {
+  const list = document.getElementById('sample-list');
+  if (!list) return;
+  list.innerHTML = '';
+  let hasAny = false;
+  for (let i = 0; i < 12; i++) {
+    const slot = bank.getSample(i);
+    if (!slot) continue;
+    hasAny = true;
+    const grp = 'ABCD'[Math.floor(i / 3)];
+    const num = (i % 3) + 1;
+    const row = document.createElement('div');
+    row.className = 'sample-row' + (i === activePad ? ' selected' : '');
+    row.innerHTML =
+      `<span class="sr-grp">${grp}</span>` +
+      `<span class="sr-num">${String(i + 1).padStart(2, '0')}</span>` +
+      `<span class="sr-name">${slot.name.toUpperCase().slice(0, 14)}</span>` +
+      `<span class="sr-key">${['A','S','D','F','G','H','J','K','Z','X','C','V'][i]}</span>`;
+    row.addEventListener('click', () => selectPad(i));
+    list.appendChild(row);
+  }
+  if (!hasAny) {
+    list.innerHTML = '<div class="sample-empty">DROP SAMPLES ON PADS</div>';
+  }
+}
+
+// Hook into the already-wrapped bank.onChange
+const _origOnChange2 = bank.onChange;
+bank.onChange = (padIndex) => {
+  if (_origOnChange2) _origOnChange2(padIndex);
+  refreshSampleList();
+};
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 displayBPM.textContent = String(seq.bpm).padStart(3, '0');
 bpmValue.textContent   = seq.bpm;
@@ -1255,3 +1302,4 @@ bpmSlider.value        = seq.bpm;
 groupBtns[0].classList.add('active');
 applyStepLength(8);
 selectPad(0);
+refreshSampleList();
