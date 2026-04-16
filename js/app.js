@@ -22,10 +22,9 @@ const midi      = new MidiController();
 const auth      = new AuthManager(null);   // sb client injected after lazy load
 const cloud     = new CloudManager(null, auth, engine);
 
-let activePad       = null;
-let recordTargetPad = null;
-let isRecordArmed   = false;
-let stepLength      = 8;
+let activePad     = null;
+let isRecordArmed = false;
+let stepLength    = 8;
 
 // ─── DOM ──────────────────────────────────────────────────────────────────────
 const pads          = Array.from(document.querySelectorAll('.pad'));
@@ -118,22 +117,6 @@ pads.forEach((padEl, i) => {
     }
   });
 
-  // Long-press while REC armed → mic record
-  let holdTimer = null;
-  padEl.addEventListener('mousedown', () => {
-    if (!isRecordArmed) return;
-    holdTimer = setTimeout(async () => {
-      recordTargetPad = i;
-      displayInfo.textContent = `REC ${i + 1}`;
-      await recorder.startRecording();
-    }, 400);
-  });
-  const cancel = () => {
-    clearTimeout(holdTimer);
-    if (recorder.isRecording) recorder.stopRecording();
-  };
-  padEl.addEventListener('mouseup',    cancel);
-  padEl.addEventListener('mouseleave', cancel);
 });
 
 function selectPad(i) {
@@ -240,25 +223,56 @@ btnStop.addEventListener('click', () => {
   btnPlay.classList.remove('active');
 });
 
+// ─── Loop recording ───────────────────────────────────────────────────────────
+// REC arms loop step-recording. On first press:
+//   • clears the active group pattern
+//   • starts the sequencer (if stopped)
+//   • records every pad hit at the current step position
+// At loop end, if still armed, enters overdub: the recorded pattern plays back
+// while new hits layer on top. Press REC again to stop.
+
+let recLoopCount = 0;   // how many loops have completed while recording
+
 btnRecord.addEventListener('click', () => {
-  isRecordArmed = !isRecordArmed;
-  btnRecord.classList.toggle('armed', isRecordArmed);
-  if (isRecordArmed) {
-    displayInfo.textContent = 'REC ARM';
-    recorder.onRecordingComplete = (buf) => {
-      if (recordTargetPad !== null) {
-        bank.setSample(recordTargetPad, buf, `MIC ${recordTargetPad + 1}`);
-        recordTargetPad = null;
-      }
-      displayInfo.textContent = 'REC OK';
-      isRecordArmed = false;
-      btnRecord.classList.remove('armed');
-    };
-  } else {
-    recorder.stopRecording();
+  if (seq.isRecording) {
+    // ── Stop recording ────────────────────────────────────────────────────
+    seq.isRecording = false;
+    isRecordArmed   = false;
+    recLoopCount    = 0;
+    btnRecord.classList.remove('armed');
     displayInfo.textContent = seq.isPlaying ? 'PLAY' : 'STOP';
+    return;
   }
+
+  // ── Start recording ───────────────────────────────────────────────────
+  engine.init();
+  recLoopCount = 0;
+
+  // Clear the active group so loop 1 starts from silence
+  seq.clearPattern(seq.activeGroup);
+  updateStepGrid();
+
+  // Start sequencer if not already running
+  if (!seq.isPlaying) {
+    seq.start();
+    btnPlay.classList.add('active');
+    btnStop.classList.remove('active');
+  }
+
+  seq.isRecording = true;
+  isRecordArmed   = true;
+  btnRecord.classList.add('armed');
+  displayInfo.textContent = 'REC 1';
 });
+
+// On each loop wrap-around while recording: stay in overdub (don't clear),
+// update the step grid so the user can see what was just captured.
+seq.onLoopEnd = () => {
+  if (!seq.isRecording) return;
+  recLoopCount++;
+  updateStepGrid();
+  displayInfo.textContent = `REC ${recLoopCount + 1}`;
+};
 
 // ─── Tap tempo ────────────────────────────────────────────────────────────────
 const tapTimes = [];

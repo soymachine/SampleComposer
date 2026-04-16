@@ -106,9 +106,10 @@ body {
 /* ── Main layout ───────────────────────────────────────────────────────────── */
 .main-layout {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 14px;
-  max-width: 980px;
+  max-width: 1300px;
   margin: 18px auto 0;
   padding: 0 16px;
 }
@@ -116,6 +117,7 @@ body {
 /* ══ DEVICE ══════════════════════════════════════════════════════════════════ */
 .device {
   width: 430px;
+  zoom: 1.5;
   flex-shrink: 0;
   background: linear-gradient(168deg, #c4c2be 0%, #aeacaa 50%, #9e9c99 100%);
   border-radius: 14px;
@@ -685,7 +687,7 @@ body {
 /* ══ RIGHT PANEL ═════════════════════════════════════════════════════════════ */
 .panel-right {
   flex: 1;
-  min-width: 300px;
+  min-width: min(100%, 380px);
   background: var(--panel-bg);
   border-radius: 10px;
   overflow: hidden;

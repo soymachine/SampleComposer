@@ -49,7 +49,8 @@ export class Sequencer {
     this.onStep        = null;   // (step) => void
     this.onPlay        = null;
     this.onStop        = null;
-    this.onGroupChange = null;   // ← NEW: (groupIndex) => void
+    this.onGroupChange = null;   // (groupIndex) => void
+    this.onLoopEnd     = null;   // () => void — fires each time pattern wraps to step 0
   }
 
   get stepDuration() { return (60 / this.bpm) / 4; }
@@ -219,6 +220,11 @@ export class Sequencer {
     }
 
     this.currentStep = (this.currentStep + 1) % this.stepsPerPattern;
+
+    // ── Loop-end callbacks ─────────────────────────────────────────────────
+    if (this.currentStep === 0) {
+      setTimeout(() => { if (this.onLoopEnd) this.onLoopEnd(); }, 0);
+    }
 
     // ── Song mode: advance group at end of pattern ─────────────────────────
     if (this.currentStep === 0 && this.songMode && this.songChain.length > 0) {
